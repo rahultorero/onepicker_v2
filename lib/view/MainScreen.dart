@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:onepicker/view/PPCDashboardScreen.dart';
 import 'dart:math' as math;
 
 import '../controllers/MainScreenController.dart';
@@ -43,11 +44,11 @@ class MainScreen extends StatelessWidget {
                 // Screen content
                 Obx(() => IndexedStack(
                   index: controller.currentIndex.value,
-                  children: const [
-                    HomeScreen(),
-                    ReportsScreen(),
-                    DevicesScreen(),
-                    ProfileScreen(),
+                  children: [
+                    const HomeScreen(),
+                    PPCDashboardScreen(),
+                    const DevicesScreen(),
+                    const ProfileScreen(),
                   ],
                 )),
               ],

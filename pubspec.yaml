@@ -39,6 +39,13 @@ dependencies:
   http: ^1.4.0
   device_info_plus: any
   shared_preferences: ^2.3.2
+  intl: ^0.20.2
+  fl_chart: ^0.63.0
+  excel: ^4.0.6
+  path_provider: ^2.0.15
+  permission_handler: ^11.3.0
+  external_path: ^1.0.3
+
 
 dev_dependencies:
   flutter_test:

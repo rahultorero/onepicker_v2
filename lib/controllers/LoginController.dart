@@ -9,9 +9,14 @@ import 'package:onepicker/model/LoginModel.dart';
 import 'package:onepicker/view/MainScreen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import 'dart:async'; // for TimeoutException
 
+import '../bottomsheets/CompanySelectionBottomSheet.dart';
+import '../model/BranchData.dart';
+import '../model/CompanyData.dart';
+import '../model/FloorData.dart';
 import '../model/ServerConnectModel.dart';
-import '../services.dart';
+import '../services/services.dart';
 import '../theme/AppTheme.dart';
 
 // Login Controller using GetX
@@ -21,6 +26,26 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
   var isSettingsMode = false.obs;
   var rememberMe = false.obs;
   var isPasswordVisible = false.obs;
+
+  // Selection Loading States
+  var isCompanyLoading = false.obs;
+  var isBranchLoading = false.obs;
+  var isFloorLoading = false.obs;
+
+  // Static Selection Variables
+  static int? selectedCompanyId = 0;
+  static int? selectedBranchId = 0;
+  static int? selectedFloorId = 0;
+
+  // Selection Data
+  var companyList = <CompanyData>[].obs;
+  var branchList = <BranchData>[].obs;
+  var floorList = <FloorData>[].obs;
+
+  // Selected Items for Display
+  var selectedCompany = Rx<CompanyData?>(null);
+  var selectedBranch = Rx<BranchData?>(null);
+  var selectedFloor = Rx<FloorData?>(null);
 
   // Text Controllers
   final usernameController = TextEditingController();
@@ -100,7 +125,6 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
     }
   }
 
-
   void toggleSettingsMode() {
     isSettingsMode.value = !isSettingsMode.value;
     if (isSettingsMode.value) {
@@ -118,13 +142,12 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
     rememberMe.value = !rememberMe.value;
   }
 
-  // Get device IMEI (simplified - you'll need proper implementation)
   Future<String> getDeviceImei() async {
     try {
       DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
       if (Platform.isAndroid) {
         AndroidDeviceInfo androidInfo = await deviceInfo.androidInfo;
-        return androidInfo.id ?? 'unknown'; // Use Android ID as fallback
+        return androidInfo.id ?? 'unknown';
       } else if (Platform.isIOS) {
         IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
         return iosInfo.identifierForVendor ?? 'unknown';
@@ -135,7 +158,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
     return 'unknown_device';
   }
 
-  // Login API Call
+  // Login API Call - Modified to show selection bottomsheet
   Future<void> login() async {
     if (usernameController.text.isEmpty || passwordController.text.isEmpty) {
       Get.snackbar(
@@ -152,36 +175,28 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
 
     try {
       String imei = await getDeviceImei();
-
       final apiConfig = await ApiConfig.load();
 
-      final response = await http.post(
-        Uri.parse('${apiConfig.baseUrl}login'), // Replace with your API endpoint
+      final response = await http
+          .post(
+        Uri.parse('${apiConfig.baseUrl}login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'imei': imei,
           'username': usernameController.text,
           'password': passwordController.text,
         }),
-      );
+      )
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException("Request timed out after 10 seconds");
+      });
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-
-
-        // 🔁 Convert to model
         final loginResponse = LoginModel.fromJson(responseData);
 
-        if(loginResponse.status == '200'){
+        if (loginResponse.status == '200') {
           await ApiConfig.setLoginData(loginResponse);
-
-          // ✅ Access values
-          print('Status: ${loginResponse.status}');
-          print('Message: ${loginResponse.message}');
-
-
-          // 🔄 Print entire JSON for debugging
-          print('Raw JSON: ${jsonEncode(responseData)}');
 
           if (rememberMe.value) {
             final prefs = await SharedPreferences.getInstance();
@@ -189,13 +204,11 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
             await prefs.setString('username', usernameController.text);
             await prefs.setString('password', passwordController.text);
           } else {
-            // Clear saved login if rememberMe is off
             final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('remember_me', false);
             await prefs.remove('username');
             await prefs.remove('password');
           }
-
 
           Get.snackbar(
             'Success',
@@ -205,15 +218,10 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
             snackPosition: SnackPosition.TOP,
           );
 
-
-          // Navigate to main screen
-          await Future.delayed(const Duration(seconds: 2));
-          Get.offAll(() => MainScreen());
-        }else{
-
-          print('Status: ${loginResponse.status}');
-          print('Message: ${loginResponse.message}');
-
+          // Show selection bottomsheet instead of navigating directly
+          await Future.delayed(const Duration(milliseconds: 500));
+          _showSelectionBottomSheet();
+        } else {
           Get.snackbar(
             'Error',
             'Login failed. Access Denied...',
@@ -222,9 +230,6 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
             snackPosition: SnackPosition.TOP,
           );
         }
-
-
-
       } else {
         Get.snackbar(
           'Error',
@@ -234,8 +239,16 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
           snackPosition: SnackPosition.TOP,
         );
       }
+    } on TimeoutException {
+      Get.snackbar(
+        'Error',
+        'Request timed out. Please try again.',
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+      );
     } catch (e) {
-      print("e -->$e");
+      print("e --> $e");
       Get.snackbar(
         'Error',
         'Network error. Please try again.',
@@ -248,7 +261,169 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
     }
   }
 
-  // Settings API Call
+  // Company List API
+  Future<void> getCompanyList() async {
+    isCompanyLoading.value = true;
+    try {
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}company'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userid': loginData?.response?.empId?.toString() ?? '0',
+          'useas': '1',
+          'companyid': loginData?.response?.coId?.toString() ?? '0',
+          'branchid': loginData?.response?.brchId?.toString() ?? '0',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      print("📩 Raw Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        print("📦 Decoded JSON: $data");
+
+        final companyResponse = CompanyListModel.fromJson(data);
+
+        print("✅ Parsed Company Response: ${companyResponse.toJson()}");
+
+        if (companyResponse.status == '200' && companyResponse.response != null) {
+          companyList.value = companyResponse.response!;
+          print("🏢 Loaded Companies: ${companyList.length}");
+        } else {
+          print('⚠️ Response status: ${companyResponse.status}');
+          Get.snackbar('Error', 'Failed to load companies');
+        }
+      } else {
+        print("❌ API returned status: ${response.statusCode}");
+      }
+    } catch (e, stacktrace) {
+      print('🔥 Company API Error: $e');
+      print('📌 Stacktrace: $stacktrace');
+      Get.snackbar('Error', 'Failed to load companies');
+    } finally {
+      isCompanyLoading.value = false;
+    }
+  }
+
+  // Branch List API
+  Future<void> getBranchList(int companyId) async {
+    isBranchLoading.value = true;
+    branchList.clear();
+    selectedBranch.value = null;
+    floorList.clear();
+    selectedFloor.value = null;
+
+    try {
+      final apiConfig = await ApiConfig.load();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}branch'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'companyid': companyId.toString(),
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final branchResponse = BranchListModel.fromJson(data);
+
+        if (branchResponse.status == '200' && branchResponse.response != null) {
+          branchList.value = branchResponse.response!;
+        } else {
+          Get.snackbar('Error', 'Failed to load branches');
+        }
+      }
+    } catch (e) {
+      print('Branch API Error: $e');
+      Get.snackbar('Error', 'Failed to load branches');
+    } finally {
+      isBranchLoading.value = false;
+    }
+  }
+
+  // Floor List API
+  Future<void> getFloorList(int companyId, int branchId) async {
+    isFloorLoading.value = true;
+    floorList.clear();
+    selectedFloor.value = null;
+
+    try {
+      final apiConfig = await ApiConfig.load();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}break'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'companyid': companyId.toString(),
+          'branchid': branchId.toString(),
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final floorResponse = FloorListModel.fromJson(data);
+
+        if (floorResponse.status == '200' && floorResponse.response != null) {
+          floorList.value = floorResponse.response!;
+        } else {
+          Get.snackbar('Error', 'Failed to load floors');
+        }
+      }
+    } catch (e) {
+      print('Floor API Error: $e');
+      Get.snackbar('Error', 'Failed to load floors');
+    } finally {
+      isFloorLoading.value = false;
+    }
+  }
+
+  // Selection Methods
+  void selectCompany(CompanyData company) {
+    selectedCompany.value = company;
+    selectedCompanyId = company.companyid;
+    getBranchList(company.companyid!);
+  }
+
+  void selectBranch(BranchData branch) {
+    selectedBranch.value = branch;
+    selectedBranchId = branch.brchid;
+    getFloorList(selectedCompanyId!, branch.brchid!);
+  }
+
+  void selectFloor(FloorData floor) {
+    selectedFloor.value = floor;
+    selectedFloorId = floor.brk;
+  }
+
+  // Show Selection Bottom Sheet
+  void _showSelectionBottomSheet() {
+    getCompanyList();
+    Get.bottomSheet(
+      CompanySelectionBottomSheet(),
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+    );
+  }
+
+  // Proceed to Main Screen
+  void proceedToMainScreen() {
+    // if (selectedCompanyId != null && selectedBranchId != null && selectedFloorId != null) {
+      if (selectedCompanyId != null && selectedBranchId != null ) {
+
+        Get.back(); // Close bottom sheet
+      Get.offAll(() => MainScreen());
+    } else {
+      Get.snackbar('Error', 'Please complete all selections');
+    }
+  }
+
+  // Settings API Call (unchanged)
   Future<void> connectToServer() async {
     if (ipController.text.isEmpty || portController.text.isEmpty) {
       Get.snackbar(
@@ -261,7 +436,6 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
       return;
     }
 
-    // Validate IP address format
     if (!_isValidIP(ipController.text)) {
       Get.snackbar(
         'Error',
@@ -276,20 +450,23 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
     isLoading.value = true;
 
     try {
-      final response = await http.post(
-        Uri.parse('http://${ipController.text}:${portController.text}/medipick/api/settings'), // Dynamic endpoint
+      final response = await http
+          .post(
+        Uri.parse(
+            'http://${ipController.text}:${portController.text}/medipick/api/settings'),
         headers: {'Content-Type': 'application/json'},
-      );
+      )
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException("Connection timed out after 10 seconds");
+      });
 
       if (response.statusCode == 200) {
-
         final data = jsonDecode(response.body);
         final serverConnect = ServerConnectModel.fromJson(data);
 
         if (serverConnect.settingData != null) {
-          await ApiConfig.setAppSettings(serverConnect.settingData!); // 🔥 save like Java
+          await ApiConfig.setAppSettings(serverConnect.settingData!);
         }
-
         Get.snackbar(
           'Success',
           'Connected to server successfully!',
@@ -297,11 +474,8 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
           colorText: Colors.white,
           snackPosition: SnackPosition.TOP,
         );
-
         await saveSettings(ipController.text, portController.text);
-
         toggleSettingsMode();
-
       } else {
         Get.snackbar(
           'Error',
@@ -311,8 +485,15 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
           snackPosition: SnackPosition.TOP,
         );
       }
+    } on TimeoutException {
+      Get.snackbar(
+        'Error',
+        'Connection timed out. Please check server or try again.',
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+      );
     } catch (e) {
-      print(e.toString());
       Get.snackbar(
         'Error',
         'Connection failed. Please check IP and port.',
@@ -339,7 +520,6 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
       prefs.setString(key, value);
     });
   }
-
 
   bool _isValidIP(String ip) {
     return RegExp(r'^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')

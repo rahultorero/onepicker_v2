@@ -655,26 +655,35 @@ class _UserCard extends StatelessWidget {
                 ],
                 const SizedBox(height: 10), // Reduced from 14
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    Expanded(
+                    SizedBox(
+                      width: 90, // adjust as needed
                       child: _ModernActionButton(
                         onPressed: () => controller.showEditDialog(user),
                         text: 'Edit',
                         icon: Icons.edit_outlined,
-                        gradient: [AppTheme.medicalTeal, AppTheme.medicalTeal.withOpacity(0.8)],
+                        gradient: [
+                          AppTheme.medicalTeal,
+                          AppTheme.medicalTeal.withOpacity(0.8),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 6), // Reduced from 8
-                    Expanded(
+                    const SizedBox(width: 6),
+                    SizedBox(
+                      width: 90,
                       child: _ModernActionButton(
                         onPressed: () => controller.showRoleAssignmentDialog(user),
                         text: 'Roles',
                         icon: Icons.assignment_outlined,
-                        gradient: [AppTheme.primaryBlue, AppTheme.primaryBlue.withOpacity(0.8)],
+                        gradient: [
+                          AppTheme.primaryBlue,
+                          AppTheme.primaryBlue.withOpacity(0.8),
+                        ],
                       ),
                     ),
                   ],
-                ),
+                )
               ],
             ),
           ),

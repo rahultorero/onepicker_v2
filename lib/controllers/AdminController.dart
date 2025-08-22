@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../model/UserListModel.dart';
-import '../services.dart';
+import '../services/services.dart';
 import '../view/AdminScreen.dart';
 
 class AdminController extends GetxController with GetSingleTickerProviderStateMixin {

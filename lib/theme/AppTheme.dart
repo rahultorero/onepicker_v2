@@ -20,6 +20,23 @@ class AppTheme {
   static const Color lightBlue = Color(0xFFE3F2FD);
   static const Color shadowColor = Color(0xFF000000);
 
+  static const List<Color> performanceGradient = [Color(0xFF4CAF50), Color(0xFF81C784)];
+  static const List<Color> analyticsGradient = [Color(0xFF2196F3), Color(0xFF64B5F6)];
+  static const List<Color> chartGradient = [Color(0xFF00BCD4), Color(0xFF4DD0E1)];
+  static const List<Color> rankingGradient = [Color(0xFFFF9800), Color(0xFFFFB74D)];
+
+  // Enhanced colors for charts
+  static const List<Color> chartColors = [
+    Color(0xFF2196F3), Color(0xFF4CAF50), Color(0xFFFF9800),
+    Color(0xFF9C27B0), Color(0xFF00BCD4), Color(0xFFFF5722),
+    Color(0xFF607D8B), Color(0xFF795548)
+  ];
+
+  static const List<Color> goldGradient = [Color(0xFFFFD700), Color(0xFFFFF176)];
+  static const List<Color> silverGradient = [Color(0xFFC0C0C0), Color(0xFFE0E0E0)];
+  static const List<Color> bronzeGradient = [Color(0xFFCD7F32), Color(0xFFFFAB40)];
+
+
   static const double paddingSmall = 8.0;
   static const double paddingMedium = 12.0;
   static const double paddingLarge = 16.0;

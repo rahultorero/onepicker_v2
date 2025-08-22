@@ -1,8 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:math' as math;
+import 'package:get/get.dart';
+import 'dart:math' as math;
+import 'package:http/http.dart' as http;
+import 'package:onepicker/controllers/LoginController.dart';
+import 'dart:convert';
 
+import '../bottomsheets/LocationSelectionBottomSheet.dart';
+import '../model/LocationModel.dart';
+import '../services/services.dart';
 import '../theme/AppTheme.dart';
+import '../theme/AppTheme.dart';
+import '../view/AdminScreen.dart';
+import '../view/PickerScreen.dart';
+import '../view/TrayAssignerScreen.dart';
 
 class HomeScreenController extends GetxController with GetTickerProviderStateMixin {
   late AnimationController cardController;
@@ -12,6 +24,15 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
 
   var userName = ''.obs;
   var notificationCount = 3.obs;
+
+  // Location related observables
+  var isLoadingLocations = false.obs;
+  var locations = <LocationData>[].obs;
+  var selectedLocation = Rxn<LocationData>();
+  static String? selectLocation = "";
+
+  // API configuration
+  static const String baseUrl = 'your_base_url_here'; // Replace with your actual base URL
 
   final List<Map<String, dynamic>> quickServices = [
     {
@@ -58,7 +79,7 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
       'title': 'Packer',
       'subtitle': 'Live ApneBoot Device Monitoring',
       'icon': Icons.backpack,
-      'color':  Color(0xFF199A8E),
+      'color': Color(0xFF199A8E),
       'gradient': AppTheme.primaryGradient,
       'isNew': false,
     },
@@ -108,6 +129,140 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
 
     headerController.forward();
     cardController.forward();
+  }
+
+  // API call to fetch locations using HTTP
+  Future<void> fetchLocations() async {
+    try {
+      isLoadingLocations(true);
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}location'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'userid': loginData!.response!.empId.toString(), // Replace with actual user ID from your app state
+          'empid': loginData.response!.empId.toString(),  // Replace with actual employee ID
+          'branchid': LoginController.selectedBranchId.toString(), // Replace with actual branch ID
+          'appversion': 'V1',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final locationModel = LocationModel.fromJson(jsonData);
+
+        if (locationModel.status == '200') {
+          // Always add "All" as the first option
+          locations.assignAll([
+            LocationData(loca: 'All Location'),
+            ...(locationModel.locationDataList ?? []),
+          ]);
+
+          if (locations.isEmpty) {
+            Get.snackbar(
+              'Info',
+              'No locations available',
+              backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+              colorText: AppTheme.primaryBlue,
+            );
+          }
+        }
+        else {
+          Get.snackbar(
+            'Error',
+            locationModel.message ?? 'Failed to fetch locations',
+            backgroundColor: Colors.red.withOpacity(0.1),
+            colorText: Colors.red,
+          );
+        }
+      } else {
+        print('API Error: ${response.statusCode} - ${response.body}');
+        Get.snackbar(
+          'Error',
+          'Server error. Please try again later.',
+          backgroundColor: Colors.red.withOpacity(0.1),
+          colorText: Colors.red,
+        );
+      }
+    } catch (e) {
+      print('Error fetching locations: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to fetch locations. Please check your internet connection.',
+        backgroundColor: Colors.red.withOpacity(0.1),
+        colorText: Colors.red,
+        duration: const Duration(seconds: 3),
+      );
+    } finally {
+      isLoadingLocations(false);
+    }
+  }
+
+  // Handle service tap
+  void onServiceTap(Map<String, dynamic> service) {
+    if (service['title'] == 'Admin') {
+      Get.to(() => AdminScreen());
+    } else if (service['title'] == 'Tray Assigner') {
+      Get.to(() => TrayAssignerScreen());
+    } else if (service['title'] == 'Picker') {
+      // Show location selection bottom sheet
+      showLocationBottomSheet();
+    } else {
+      Get.snackbar(
+        service['title'],
+        'Opening ${service['title']}...',
+        backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+        colorText: AppTheme.primaryBlue,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  // Show location selection bottom sheet
+  void showLocationBottomSheet() {
+    // Reset selection
+    selectedLocation.value = LocationData(loca: 'All Location');
+
+    // Fetch locations first, then show bottom sheet
+    fetchLocations().then((_) {
+      if (locations.isNotEmpty) {
+        Get.bottomSheet(
+          LocationSelectionBottomSheet(),
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+        );
+      }
+    });
+  }
+
+  // Handle next button tap
+  void onNextButtonTap() {
+    if (selectedLocation.value != null) {
+      // Save selected location to static variable
+      selectLocation = selectedLocation.value!.loca;
+      if(selectLocation == "All Location"){
+        selectLocation = 'ZZZ999';
+      }
+
+      // Close bottom sheet
+
+      Get.back();
+      print(selectLocation);
+
+      // TODO: Navigate to your Picker screen
+      Get.to(() => PickerScreen());
+    } else {
+      Get.snackbar(
+        'Warning',
+        'Please select a location first',
+        backgroundColor: Colors.orange.withOpacity(0.1),
+        colorText: Colors.orange,
+      );
+    }
   }
 
   @override

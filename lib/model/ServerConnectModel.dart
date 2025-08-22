@@ -32,17 +32,20 @@ class SettingData {
 
   factory SettingData.fromJson(Map<String, dynamic> json) {
     return SettingData(
-      sName: json['SName'] as String?,
-      syn: json['SYN'] as int?,
-      sSub: json['SSub'] as String?,
-      setting: json['Setting'] as String?,
+      sName: json['SName']?.toString(),
+      syn: json['SYN'] != null ? int.tryParse(json['SYN'].toString()) : null,
+      sSub: json['SSub']?.toString(),
+      setting: json['Setting']?.toString(),
     );
   }
 
+
+
   Map<String, dynamic> toJson() => {
     'SName': sName,
-    'SYN': syn,
-    'SSub': sSub,
-    'Setting': setting,
+    'SYN': syn?.toString(),
+    'SSub': sSub?.toString(),
+    'Setting': setting?.toString(),
   };
+
 }

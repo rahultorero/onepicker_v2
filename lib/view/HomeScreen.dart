@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:onepicker/services.dart';
+import 'package:onepicker/services/services.dart';
 import 'package:onepicker/view/AdminScreen.dart';
+import 'package:onepicker/view/TrayAssignerScreen.dart';
 import 'dart:math' as math;
 
 import '../controllers/HomeScreenController.dart';
@@ -281,6 +282,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildServiceCard(Map<String, dynamic> service, int index) {
+    final controller = Get.find<HomeScreenController>();
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       height: 76,
@@ -302,15 +305,9 @@ class _HomeScreenState extends State<HomeScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
           onTap: () {
-            // Get.snackbar(
-            //   service['title'],
-            //   'Opening ${service['title']}...',
-            //   backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-            //   colorText: AppTheme.primaryBlue,
-            //   duration: const Duration(seconds: 2),
-            // );
 
-            Get.to(AdminScreen());
+            controller.onServiceTap(service);
+
 
           },
           child: Padding(
