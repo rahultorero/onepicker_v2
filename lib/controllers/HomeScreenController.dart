@@ -5,9 +5,12 @@ import 'package:get/get.dart';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:onepicker/controllers/LoginController.dart';
+import 'package:onepicker/view/CheckerScreen.dart';
+import 'package:onepicker/view/PackerScreen.dart';
 import 'dart:convert';
 
 import '../bottomsheets/LocationSelectionBottomSheet.dart';
+import '../bottomsheets/PrinterSelectionBottomSheet.dart';
 import '../model/LocationModel.dart';
 import '../services/services.dart';
 import '../theme/AppTheme.dart';
@@ -30,9 +33,9 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
   var locations = <LocationData>[].obs;
   var selectedLocation = Rxn<LocationData>();
   static String? selectLocation = "";
+  static String? selectPrinter = '';
+  static String? selectCamera = '';
 
-  // API configuration
-  static const String baseUrl = 'your_base_url_here'; // Replace with your actual base URL
 
   final List<Map<String, dynamic>> quickServices = [
     {
@@ -211,6 +214,10 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
     } else if (service['title'] == 'Picker') {
       // Show location selection bottom sheet
       showLocationBottomSheet();
+    } else if (service['title'] == 'Packer') {
+      Get.to(() => PackerScreen());
+    }else if (service['title'] == 'Checker') {
+      _showPrinterSelection(Get.context!);
     } else {
       Get.snackbar(
         service['title'],
@@ -235,6 +242,28 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
           backgroundColor: Colors.transparent,
           isScrollControlled: true,
         );
+      }
+    });
+  }
+
+
+  void _showPrinterSelection(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => PrinterSelectionBottomSheet(),
+    ).then((result) {
+      if (result != null) {
+        // Handle the result
+        final position = result['position'];
+        final camera = result['camera'];
+
+        selectPrinter = position;
+        selectCamera = camera;
+
+        Get.to(CheckerScreen());
+
       }
     });
   }

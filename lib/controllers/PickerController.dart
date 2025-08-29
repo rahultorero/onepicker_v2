@@ -23,6 +23,8 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
   var pickerDetails = <PickerMenuDetail>[].obs;
   var stockList = <StockDetail>[].obs;
   var selectedLocation = ''.obs;
+  var selectedPickerIndex = (-1).obs;
+
 
   // Tab index
   var currentTabIndex = 0.obs;
@@ -52,6 +54,11 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
     super.onClose();
   }
 
+  void onPickerItemSelect(int index, PickerData pickerData) {
+    selectedPickerIndex.value = index;
+    fetchPickerDetails(pickerData);
+  }
+
   // API call to fetch picker list
   Future<void> fetchPickerList() async {
     try {
@@ -65,13 +72,13 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: {
-          'companyid': LoginController.selectedCompanyId.toString(), // Replace with actual company ID
-          'useas': '1', // Replace with actual useas value
-          'branchid': LoginController.selectedBranchId.toString(), // Replace with actual branch ID
+          'companyid': LoginController.selectedCompanyId.toString(),
+          'useas': '1',
+          'branchid': LoginController.selectedBranchId.toString(),
           'location': selectedLocation.value,
-          'empid': loginData?.response?.empId.toString(), // Replace with actual employee ID
-          'brk': LoginController.selectedFloorId.toString(), // Replace with actual brk value
-          'appversion': 'V1', // Replace with actual app version
+          'empid': loginData?.response?.empId.toString(),
+          'brk': LoginController.selectedFloorId.toString(),
+          'appversion': 'V1',
         },
       );
 
@@ -139,11 +146,11 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           'useas': '1',
           'siid': pickerData.sIId.toString(),
           'trayno': pickerData.trayNo ?? '',
-          'branchid': LoginController.selectedBranchId.toString(), // Replace with actual branch ID
+          'branchid': LoginController.selectedBranchId.toString(),
           'location': selectedLocation.value,
-          'empid': loginData?.response?.empId.toString(), // Replace with actual employee ID
-          'brk': LoginController.selectedFloorId.toString(), // Replace with actual brk value
-          'appversion': 'V1', // Replace with actual app version
+          'empid': loginData?.response?.empId.toString(),
+          'brk': LoginController.selectedFloorId.toString(),
+          'appversion': 'V1',
         },
       );
 
@@ -153,17 +160,7 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
 
         if (pickerMenuModel.status == '200') {
           pickerDetails.assignAll(pickerMenuModel.menuDetailList ?? []);
-          if (pickerDetails.isNotEmpty) {
-            // Show bottom sheet with details
-            showPickerDetailsBottomSheet(pickerData);
-          } else {
-            Get.snackbar(
-              'Info',
-              'No details available for this item',
-              backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-              colorText: AppTheme.primaryBlue,
-            );
-          }
+          // Remove the showPickerDetailsBottomSheet call
         } else {
           Get.snackbar(
             'Error',
