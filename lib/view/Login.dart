@@ -29,9 +29,9 @@ class LoginPage extends StatelessWidget {
                 center: Alignment.topRight,
                 radius: 1.5,
                 colors: [
-                  AppTheme.lightBlue.withOpacity(0.3),
+                  AppTheme.lightTeal.withOpacity(0.3),
                   AppTheme.background,
-                  AppTheme.primaryBlue.withOpacity(0.05),
+                  AppTheme.primaryTeal.withOpacity(0.05),
                 ],
               ),
             ),
@@ -91,7 +91,7 @@ class LoginPage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryBlue,
+                  color: AppTheme.primaryTeal,
                 ),
               ),
               Text(
@@ -110,11 +110,11 @@ class LoginPage extends StatelessWidget {
               onPressed: controller.toggleSettingsMode,
               icon: Icon(
                 controller.isSettingsMode.value ? Icons.arrow_back : Icons.settings,
-                color: AppTheme.primaryBlue,
+                color: AppTheme.primaryTeal,
                 size: 28,
               ),
               style: IconButton.styleFrom(
-                backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
+                backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
                 padding: const EdgeInsets.all(12),
               ),
             ),
@@ -132,7 +132,7 @@ class LoginPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.1),
+            color: AppTheme.primaryTeal.withOpacity(0.1),
             blurRadius: 20,
             spreadRadius: 5,
           ),
@@ -169,7 +169,7 @@ class LoginPage extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+              colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
             ),
             shape: BoxShape.circle,
           ),
@@ -209,7 +209,7 @@ class LoginPage extends StatelessWidget {
             Checkbox(
               value: controller.rememberMe.value,
               onChanged: (_) => controller.toggleRememberMe(),
-              activeColor: AppTheme.medicalTeal,
+              activeColor: AppTheme.lightTeal,
             ),
             Text(
               'Remember me',
@@ -243,7 +243,7 @@ class LoginPage extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppTheme.medicalTeal, AppTheme.mintGreen],
+              colors: [AppTheme.lightTeal, AppTheme.accentGreen],
             ),
             shape: BoxShape.circle,
           ),
@@ -261,7 +261,7 @@ class LoginPage extends StatelessWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppTheme.primaryBlue,
+            color: AppTheme.primaryTeal,
           ),
         ),
 
@@ -303,7 +303,7 @@ class LoginPage extends StatelessWidget {
           child: Text(
             'Back to Login',
             style: TextStyle(
-              color: AppTheme.primaryBlue,
+              color: AppTheme.primaryTeal,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -324,10 +324,10 @@ class LoginPage extends StatelessWidget {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withOpacity(0.1),
+        color: AppTheme.lightTeal.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.2),
+          color: AppTheme.primaryTeal.withOpacity(0.2),
         ),
       ),
       child: TextField(
@@ -338,19 +338,19 @@ class LoginPage extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           hintText: hintText,
-          prefixIcon: Icon(icon, color: AppTheme.primaryBlue),
+          prefixIcon: Icon(icon, color: AppTheme.primaryTeal),
           suffixIcon: isPassword
               ? IconButton(
             onPressed: onVisibilityToggle,
             icon: Icon(
               isPasswordVisible ?? false ? Icons.visibility : Icons.visibility_off,
-              color: AppTheme.primaryBlue,
+              color: AppTheme.primaryTeal,
             ),
           )
               : null,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
-          labelStyle: TextStyle(color: AppTheme.primaryBlue),
+          labelStyle: TextStyle(color: AppTheme.primaryTeal),
           hintStyle: TextStyle(color: AppTheme.onSurface.withOpacity(0.5)),
         ),
       ),
@@ -367,12 +367,12 @@ class LoginPage extends StatelessWidget {
       height: 56,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+          colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.3),
+            color: AppTheme.primaryTeal.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -438,10 +438,10 @@ class LoginPage extends StatelessWidget {
             icons[index % icons.length],
             size: size,
             color: [
-              AppTheme.primaryBlue,
-              AppTheme.medicalTeal,
-              AppTheme.mintGreen,
-              AppTheme.accent,
+              AppTheme.primaryTeal,
+              AppTheme.lightTeal,
+              AppTheme.accentGreen,
+              AppTheme.warmAccent,
             ][index % 4].withOpacity(0.6),
           ),
         ),
@@ -459,7 +459,7 @@ class MedicalBackgroundPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppTheme.primaryBlue.withOpacity(0.05)
+      ..color = AppTheme.primaryTeal.withOpacity(0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 

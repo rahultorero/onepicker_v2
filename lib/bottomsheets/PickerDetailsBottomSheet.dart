@@ -45,7 +45,7 @@ class PickerDetailsBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppTheme.primaryBlue.withOpacity(0.1), Colors.white],
+                colors: [AppTheme.primaryTeal.withOpacity(0.1), Colors.white],
               ),
             ),
             child: Row(
@@ -54,7 +54,7 @@ class PickerDetailsBottomSheet extends StatelessWidget {
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+                      colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -105,7 +105,7 @@ class PickerDetailsBottomSheet extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryTeal,
                         strokeWidth: 3,
                       ),
                       SizedBox(height: 16),
@@ -130,7 +130,7 @@ class PickerDetailsBottomSheet extends StatelessWidget {
                       Icon(
                         Icons.inbox_outlined,
                         size: 48,
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryTeal,
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -180,7 +180,7 @@ class PickerDetailCard extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.1),
+          color: AppTheme.primaryTeal.withOpacity(0.1),
           width: 1,
         ),
         boxShadow: [
@@ -229,7 +229,7 @@ class PickerDetailCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.orange, AppTheme.gold],
+                      colors: AppTheme.goldGradient,
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -251,14 +251,14 @@ class PickerDetailCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppTheme.medicalTeal.withOpacity(0.08),
+                color: AppTheme.primaryTeal.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Icon(
                     Icons.location_on,
-                    color: AppTheme.medicalTeal,
+                    color: AppTheme.primaryTeal,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
@@ -267,7 +267,7 @@ class PickerDetailCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: AppTheme.medicalTeal,
+                      color: AppTheme.primaryTeal,
                     ),
                   ),
                 ],
@@ -286,7 +286,7 @@ class PickerDetailCard extends StatelessWidget {
                         'Manufacture',
                         detail.dNick ?? 'N/A',
                         Icons.business,
-                        AppTheme.primaryBlue,
+                        AppTheme.primaryTeal,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -295,7 +295,7 @@ class PickerDetailCard extends StatelessWidget {
                         'Batch',
                         detail.batchNo ?? 'N/A',
                         Icons.batch_prediction,
-                        AppTheme.purple,
+                        AppTheme.lavender,
                       ),
                     ),
                   ],
@@ -308,7 +308,7 @@ class PickerDetailCard extends StatelessWidget {
                         'Expiry',
                         detail.sExpDate ?? 'N/A',
                         Icons.schedule,
-                        AppTheme.orange,
+                        AppTheme.amberGold,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -317,7 +317,7 @@ class PickerDetailCard extends StatelessWidget {
                         'MRP',
                         detail.mrp != null ? '₹${detail.mrp!.toStringAsFixed(2)}' : 'N/A',
                         Icons.currency_rupee,
-                        AppTheme.mintGreen,
+                        AppTheme.accentGreen,
                       ),
                     ),
                   ],

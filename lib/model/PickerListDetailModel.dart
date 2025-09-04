@@ -101,7 +101,7 @@ class PickerMenuDetail {
       boxPack: json['BoxPack'] is int ? json['BoxPack'] : int.tryParse(json['BoxPack'].toString()),
       caseQ: json['CaseQ'] is int ? json['CaseQ'] : int.tryParse(json['CaseQ'].toString()),
       caseL: json['CaseL'] is int ? json['CaseL'] : int.tryParse(json['CaseL'].toString()),
-      isChk: json['IsChk']?.toString(),   // force to String
+      isChk: json['IsChk']?.toString(),
       pNote: json['PNote']?.toString() ?? "",
       isSelected: false,
     );

@@ -213,7 +213,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
           Get.snackbar(
             'Success',
             'Login successful!',
-            backgroundColor: AppTheme.mintGreen.withOpacity(0.8),
+            backgroundColor: AppTheme.success.withOpacity(0.8),
             colorText: Colors.white,
             snackPosition: SnackPosition.TOP,
           );
@@ -470,7 +470,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
         Get.snackbar(
           'Success',
           'Connected to server successfully!',
-          backgroundColor: AppTheme.mintGreen.withOpacity(0.8),
+          backgroundColor: AppTheme.success.withOpacity(0.8),
           colorText: Colors.white,
           snackPosition: SnackPosition.TOP,
         );

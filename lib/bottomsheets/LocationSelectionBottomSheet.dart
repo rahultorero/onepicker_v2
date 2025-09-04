@@ -40,12 +40,12 @@ class LocationSelectionBottomSheet extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppTheme.orange.withOpacity(0.1),
+                    color: AppTheme.amberGold.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
                     Icons.location_on,
-                    color: AppTheme.orange,
+                    color: AppTheme.coralPink,
                     size: 20,
                   ),
                 ),
@@ -142,6 +142,8 @@ class LocationSelectionBottomSheet extends StatelessWidget {
                           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           border: InputBorder.none,
                           prefixIcon: Icon(Icons.location_on, color: Colors.grey),
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
                         ),
                         isExpanded: true,
                         items: controller.locations.map((LocationData location) {
@@ -174,7 +176,7 @@ class LocationSelectionBottomSheet extends StatelessWidget {
                            controller.onNextButtonTap
                           ,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.orange,
+                        backgroundColor: AppTheme.amberGold,
                         disabledBackgroundColor: Colors.grey[300],
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

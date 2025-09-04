@@ -14,7 +14,7 @@ class StockListTab extends StatelessWidget {
 
     return RefreshIndicator(
       onRefresh: controller.refreshStockData,
-      color: AppTheme.primaryBlue,
+      color: AppTheme.primaryTeal,
       child: Obx(() {
         if (controller.isLoadingStockList.value && controller.stockList.isEmpty) {
           return const Center(
@@ -22,7 +22,7 @@ class StockListTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 CircularProgressIndicator(
-                  color: AppTheme.primaryBlue,
+                  color: AppTheme.primaryTeal,
                   strokeWidth: 3,
                 ),
                 SizedBox(height: 16),
@@ -47,13 +47,13 @@ class StockListTab extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: AppTheme.medicalTeal.withOpacity(0.1),
+                    color: AppTheme.lightTeal.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.inventory_2_outlined,
                     size: 48,
-                    color: AppTheme.medicalTeal,
+                    color: AppTheme.lightTeal,
                   ),
                 ),
                 const SizedBox(height: 16),

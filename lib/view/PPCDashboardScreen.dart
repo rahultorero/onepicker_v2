@@ -13,7 +13,9 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../controllers/PPCDashboardController.dart';
 import '../model/UserPerformanceData.dart';
+
 import '../theme/AppTheme.dart';
+import 'Performance3DChart.dart';
 
 class PPCDashboardScreen extends StatefulWidget {
   final controller = Get.put(PPCDashboardController());
@@ -259,10 +261,12 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
           _buildStatisticsCards(),
           const SizedBox(height: 16),
           _buildTopPerformersChart(),
+          // Spectacular 3D bars
           const SizedBox(height: 16),
           _buildDistributionChart(),
           const SizedBox(height: 16),
-          _buildProductivityChart(),
+          _buildProductivityChart(),    // Interactive 3D scatter
+          // Mathematical surface
           const SizedBox(height: 16),
           _buildPerformanceCards(),
         ],
@@ -506,6 +510,40 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+
+  Widget build3DBarChart() {
+    return Performance3DChart(
+      data: widget.controller.filteredDataList,
+      chartType: 'bar',
+      title: '3D Performance Bars',
+      icon: Icons.bar_chart,
+      primaryColor: const Color(0xFF3B82F6),
+      secondaryColor: const Color(0xFF2563EB),
+    );
+  }
+
+  Widget build3DScatterChart() {
+    return Performance3DChart(
+      data: widget.controller.filteredDataList,
+      chartType: 'scatter',
+      title: '3D Performance Scatter',
+      icon: Icons.scatter_plot,
+      primaryColor: const Color(0xFF10B981),
+      secondaryColor: const Color(0xFF059669),
+    );
+  }
+
+  Widget build3DSurfaceChart() {
+    return Performance3DChart(
+      data: widget.controller.filteredDataList,
+      chartType: 'surface',
+      title: '3D Performance Surface',
+      icon: Icons.terrain,
+      primaryColor: const Color(0xFFF59E0B),
+      secondaryColor: const Color(0xFFD97706),
     );
   }
 
@@ -899,7 +937,7 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
       // Select style based on rank
       ex.CellStyle rowStyle = dataStyle;
       if (i == 0) rowStyle = goldStyle;        // 1st place - Gold
-      else if (i == 1) rowStyle = silverStyle; // 2nd place - Silver  
+      else if (i == 1) rowStyle = silverStyle; // 2nd place - Silver
       else if (i == 2) rowStyle = bronzeStyle; // 3rd place - Bronze
 
       // Rank
@@ -1434,4 +1472,10 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
       return number.toString();
     }
   }
+
 }
+
+
+
+// Replace your existing chart widgets with these 3D versions:
+

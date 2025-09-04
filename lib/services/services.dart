@@ -11,6 +11,7 @@ class ApiConfig {
   final String? baseUrl;
   static const String _keyAppSetting = 'KEY_SETTING';
   static const String _keyLoginData = 'login_data';
+  static const String keyList = "KEY_LIST";
 
 
   ApiConfig._(this.baseUrl);
@@ -132,4 +133,58 @@ class ApiConfig {
       return "";
     }
   }
+  static Future<void> setTrayList(List<String> list) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(keyList, list);
+    } catch (e) {
+      print('Error saving tray list: $e');
+    }
+  }
+
+  // Get tray list from SharedPreferences
+  static Future<List<String>> getTrayList() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(keyList) ?? [];
+    } catch (e) {
+      print('Error loading tray list: $e');
+      return [];
+    }
+  }
+
+  // Clear tray list from SharedPreferences
+  static Future<void> clearTrayList() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(keyList);
+    } catch (e) {
+      print('Error clearing tray list: $e');
+    }
+  }
+
+  // Add single tray to the list
+  static Future<void> addTrayToList(String trayNumber) async {
+    try {
+      final currentList = await getTrayList();
+      if (!currentList.contains(trayNumber)) {
+        currentList.add(trayNumber);
+        await setTrayList(currentList);
+      }
+    } catch (e) {
+      print('Error adding tray to list: $e');
+    }
+  }
+
+  // Remove single tray from the list
+  static Future<void> removeTrayFromList(String trayNumber) async {
+    try {
+      final currentList = await getTrayList();
+      currentList.remove(trayNumber);
+      await setTrayList(currentList);
+    } catch (e) {
+      print('Error removing tray from list: $e');
+    }
+  }
+
 }

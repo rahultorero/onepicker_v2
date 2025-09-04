@@ -10,6 +10,7 @@ import 'package:onepicker/view/Login.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   Get.put((LoginController()));
+
   runApp(const MyApp());
 }
 
@@ -192,8 +193,8 @@ class _SplashScreenState extends State<SplashScreen>
                 radius: 1.5,
                 colors: [
                   AppTheme.background,
-                  AppTheme.lightBlue,
-                  AppTheme.primaryBlue.withOpacity(0.1),
+                  AppTheme.lightTeal,
+                  AppTheme.primaryTeal.withOpacity(0.1),
                 ],
               ),
             ),
@@ -213,21 +214,21 @@ class _SplashScreenState extends State<SplashScreen>
                   top: 80,
                   left: 30,
                   size: 100,
-                  color: AppTheme.medicalTeal.withOpacity(0.15),
+                  color: AppTheme.lightTeal.withOpacity(0.15),
                   delay: 0,
                 ),
                 _buildAnimatedCircle(
                   bottom: 120,
                   right: 50,
                   size: 150,
-                  color: AppTheme.mintGreen.withOpacity(0.1),
+                  color: AppTheme.accentGreen.withOpacity(0.1),
                   delay: 1,
                 ),
                 _buildAnimatedCircle(
                   top: 200,
                   right: 80,
                   size: 80,
-                  color: AppTheme.accent.withOpacity(0.12),
+                  color: AppTheme.warmAccent.withOpacity(0.12),
                   delay: 0.5,
                 ),
 
@@ -252,19 +253,19 @@ class _SplashScreenState extends State<SplashScreen>
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
-                                    AppTheme.primaryBlue,
-                                    AppTheme.medicalTeal,
-                                    AppTheme.mintGreen,
+                                    AppTheme.primaryTeal,
+                                    AppTheme.lightTeal,
+                                    AppTheme.accentGreen,
                                   ],
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryBlue.withOpacity(0.3),
+                                    color: AppTheme.primaryTeal.withOpacity(0.3),
                                     blurRadius: 20,
                                     spreadRadius: 5,
                                   ),
                                   BoxShadow(
-                                    color: AppTheme.medicalTeal.withOpacity(0.2),
+                                    color: AppTheme.lightTeal.withOpacity(0.2),
                                     blurRadius: 40,
                                     spreadRadius: 10,
                                   ),
@@ -292,9 +293,9 @@ class _SplashScreenState extends State<SplashScreen>
                               ShaderMask(
                                 shaderCallback: (bounds) => LinearGradient(
                                   colors: [
-                                    AppTheme.primaryBlue,
-                                    AppTheme.medicalTeal,
-                                    AppTheme.mintGreen,
+                                    AppTheme.primaryTeal,
+                                    AppTheme.lightTeal,
+                                    AppTheme.accentGreen,
                                   ],
                                 ).createShader(bounds),
                                 child: const Text(
@@ -316,20 +317,20 @@ class _SplashScreenState extends State<SplashScreen>
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: [
-                                      AppTheme.accent.withOpacity(0.2),
-                                      AppTheme.mintGreen.withOpacity(0.2),
+                                      AppTheme.warmAccent.withOpacity(0.2),
+                                      AppTheme.accentGreen.withOpacity(0.2),
                                     ],
                                   ),
                                   borderRadius: BorderRadius.circular(25),
                                   border: Border.all(
-                                    color: AppTheme.medicalTeal.withOpacity(0.3),
+                                    color: AppTheme.lightTeal.withOpacity(0.3),
                                   ),
                                 ),
                                 child: Text(
                                   'Your Health, Our Priority',
                                   style: TextStyle(
                                     fontSize: 16,
-                                    color: AppTheme.primaryBlue,
+                                    color: AppTheme.primaryTeal,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1,
                                   ),
@@ -354,8 +355,8 @@ class _SplashScreenState extends State<SplashScreen>
                                 borderRadius: BorderRadius.circular(10),
                                 gradient: LinearGradient(
                                   colors: [
-                                    AppTheme.lightBlue,
-                                    AppTheme.primaryBlue.withOpacity(0.3),
+                                    AppTheme.lightTeal,
+                                    AppTheme.primaryTeal.withOpacity(0.3),
                                   ],
                                 ),
                               ),
@@ -366,7 +367,7 @@ class _SplashScreenState extends State<SplashScreen>
                                     value: _progressAnimation.value,
                                     backgroundColor: Colors.transparent,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      AppTheme.medicalTeal,
+                                      AppTheme.lightTeal,
                                     ),
                                     minHeight: 6,
                                   );
@@ -378,7 +379,7 @@ class _SplashScreenState extends State<SplashScreen>
                               'Loading Health Solutions...',
                               style: TextStyle(
                                 fontSize: 14,
-                                color: AppTheme.primaryBlue.withOpacity(0.7),
+                                color: AppTheme.primaryTeal.withOpacity(0.7),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -427,10 +428,10 @@ class _SplashScreenState extends State<SplashScreen>
             icons[index % icons.length],
             size: size,
             color: [
-              AppTheme.primaryBlue,
-              AppTheme.medicalTeal,
-              AppTheme.mintGreen,
-              AppTheme.accent,
+              AppTheme.primaryTeal,
+              AppTheme.lightTeal,
+              AppTheme.accentGreen,
+              AppTheme.warmAccent,
             ][index % 4],
           ),
         ),
@@ -484,8 +485,8 @@ class WavePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          AppTheme.primaryBlue.withOpacity(0.1),
-          AppTheme.medicalTeal.withOpacity(0.05),
+          AppTheme.primaryTeal.withOpacity(0.1),
+          AppTheme.lightTeal.withOpacity(0.05),
           Colors.transparent,
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
@@ -528,7 +529,7 @@ class HomePage extends StatelessWidget {
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+              colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
             ),
           ),
         ),
@@ -540,7 +541,7 @@ class HomePage extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.lightBlue.withOpacity(0.1),
+              AppTheme.lightTeal.withOpacity(0.1),
               AppTheme.background,
             ],
           ),
@@ -554,13 +555,13 @@ class HomePage extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      AppTheme.primaryBlue.withOpacity(0.1),
-                      AppTheme.medicalTeal.withOpacity(0.1),
+                      AppTheme.primaryTeal.withOpacity(0.1),
+                      AppTheme.lightTeal.withOpacity(0.1),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: AppTheme.primaryBlue.withOpacity(0.3),
+                    color: AppTheme.primaryTeal.withOpacity(0.3),
                   ),
                 ),
                 child: Column(
@@ -568,7 +569,7 @@ class HomePage extends StatelessWidget {
                     Icon(
                       Icons.health_and_safety,
                       size: 80,
-                      color: AppTheme.medicalTeal,
+                      color: AppTheme.lightTeal,
                     ),
                     const SizedBox(height: 20),
                     Text(
@@ -576,7 +577,7 @@ class HomePage extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryTeal,
                       ),
                       textAlign: TextAlign.center,
                     ),

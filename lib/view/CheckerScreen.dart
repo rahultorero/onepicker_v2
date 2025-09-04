@@ -29,84 +29,88 @@ class CheckerScreen extends StatelessWidget {
     return AppBar(
       elevation: 0,
       backgroundColor: Colors.transparent,
+      toolbarHeight: 70,
       flexibleSpace: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              AppTheme.primaryBlue,
-              AppTheme.medicalTeal,
-              AppTheme.mintGreen,
+              AppTheme.primaryTeal,
+              AppTheme.lightTeal,
             ],
+            stops: [0.0, 1.0],
           ),
         ),
       ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-        onPressed: () => Get.back(),
+      leading:Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryTeal.withOpacity(0.98),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+          color: AppTheme.onSurface,
+          onPressed: () => Get.back(),
+        ),
       ),
       title: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.inventory,
-              color: Colors.white,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Checker List',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Checker',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-              ),
-              Obx(() => Text(
-                '${controller.filteredPackerList.length} items available',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-              )),
-            ],
+                const SizedBox(height: 2),
+                Obx(() => Text(
+                  '${controller.filteredPackerList.length} items • Ready to check',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                )),
+              ],
+            ),
           ),
         ],
       ),
       actions: [
         Container(
-          margin: const EdgeInsets.only(right: 16),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          margin: const EdgeInsets.only(right: 16, top: 8, bottom: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
-                Icons.camera_alt,
+                Icons.camera_alt_outlined,
                 color: Colors.white,
-                size: 14,
+                size: 16,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 '${HomeScreenController.selectCamera}',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],
@@ -118,20 +122,20 @@ class CheckerScreen extends StatelessWidget {
 
   Widget _buildSearchBar(CheckerController controller) {
     return Container(
-      margin: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(left: 16,right: 16,top: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.2),
+          color: AppTheme.primaryTeal.withOpacity(0.1),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.shadowColor.withOpacity(0.1),
-            blurRadius: 8,
+            color: AppTheme.primaryTeal.withOpacity(0.08),
+            blurRadius: 12,
             spreadRadius: 0,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -141,20 +145,29 @@ class CheckerScreen extends StatelessWidget {
             child: TextField(
               controller: controller.searchController,
               decoration: InputDecoration(
-                hintText: 'Search by Invoice No or Tray No...',
+                hintText: 'Search by Invoice, Tray No, or Type...',
                 hintStyle: TextStyle(
-                  color: AppTheme.onSurface.withOpacity(0.6),
+                  color: AppTheme.onSurface.withOpacity(0.5),
                   fontSize: 14,
+                  fontWeight: FontWeight.w400,
                 ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppTheme.primaryBlue,
-                  size: 20,
+                prefixIcon: Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryTeal.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.search_rounded,
+                    color: AppTheme.primaryTeal,
+                    size: 18,
+                  ),
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 12,
+                  vertical: 16,
                 ),
               ),
               style: const TextStyle(
@@ -165,13 +178,20 @@ class CheckerScreen extends StatelessWidget {
             ),
           ),
           Obx(() => controller.searchQuery.value.isNotEmpty
-              ? IconButton(
-            icon: Icon(
-              Icons.clear,
-              color: AppTheme.primaryBlue,
-              size: 20,
+              ? Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryTeal.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            onPressed: controller.clearSearch,
+            child: IconButton(
+              icon: Icon(
+                Icons.clear_rounded,
+                color: AppTheme.primaryTeal,
+                size: 18,
+              ),
+              onPressed: controller.clearSearch,
+            ),
           )
               : const SizedBox.shrink()),
         ],
@@ -182,7 +202,9 @@ class CheckerScreen extends StatelessWidget {
   Widget _buildBody(CheckerController controller) {
     return RefreshIndicator(
       onRefresh: controller.refreshData,
-      color: AppTheme.primaryBlue,
+      color: AppTheme.primaryTeal,
+      backgroundColor: Colors.white,
+      strokeWidth: 3,
       child: Obx(() {
         if (controller.isLoadingPackerList.value && controller.packerList.isEmpty) {
           return _buildLoadingState();
@@ -198,21 +220,41 @@ class CheckerScreen extends StatelessWidget {
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
-            strokeWidth: 3,
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.primaryTeal.withOpacity(0.1),
+                  AppTheme.lightTeal.withOpacity(0.1),
+                ],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: const CircularProgressIndicator(
+              color: AppTheme.primaryTeal,
+              strokeWidth: 3,
+            ),
           ),
-          SizedBox(height: 16),
-          Text(
-            'Loading packer list...',
+          const SizedBox(height: 24),
+          const Text(
+            'Loading checker list...',
             style: TextStyle(
               color: AppTheme.onSurface,
               fontSize: 16,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please wait while we fetch the data',
+            style: TextStyle(
+              color: AppTheme.onSurface.withOpacity(0.6),
+              fontSize: 14,
             ),
           ),
         ],
@@ -226,40 +268,42 @@ class CheckerScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.primaryBlue.withOpacity(0.1),
-                  AppTheme.medicalTeal.withOpacity(0.1),
+                  AppTheme.primaryTeal.withOpacity(0.1),
+                  AppTheme.lightTeal.withOpacity(0.05),
                 ],
               ),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isSearching ? Icons.search_off : Icons.inventory_outlined,
-              size: 48,
-              color: AppTheme.primaryBlue,
+              isSearching ? Icons.search_off_rounded : Icons.inventory_2_outlined,
+              size: 56,
+              color: AppTheme.primaryTeal,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
-            isSearching ? 'No results found' : 'No packer data available',
+            isSearching ? 'No matching results' : 'No items to check',
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
               color: AppTheme.onSurface,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             isSearching
-                ? 'Try searching with different keywords'
-                : 'Pull down to refresh',
+                ? 'Try adjusting your search terms'
+                : 'Pull down to refresh and check for new items',
             style: TextStyle(
               fontSize: 14,
               color: AppTheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w400,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -268,18 +312,18 @@ class CheckerScreen extends StatelessWidget {
 
   Widget _buildPackerGrid(CheckerController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 0.92,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
+          crossAxisCount: 2,
+          childAspectRatio: 0.9,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
         ),
         itemCount: controller.filteredPackerList.length,
         itemBuilder: (context, index) {
           final packerData = controller.filteredPackerList[index];
-          return PackerItemCard(
+          return EnhancedPackerItemCard(
             packerData: packerData,
             index: index,
             onTap: () => controller.onPackerItemTap(packerData),
@@ -290,150 +334,276 @@ class CheckerScreen extends StatelessWidget {
   }
 }
 
-class PackerItemCard extends StatelessWidget {
+class EnhancedPackerItemCard extends StatelessWidget {
   final PickerData packerData;
   final int index;
   final VoidCallback onTap;
 
-  const PackerItemCard({
+  const EnhancedPackerItemCard({
     Key? key,
     required this.packerData,
     required this.index,
     required this.onTap,
   }) : super(key: key);
 
+  // Delivery type color configuration
+  Map<String, Map<String, dynamic>> get deliveryTypeConfig => {
+    'URGENT': {
+      'backgroundColor': const Color(0xFFF50E0E), // #F50E0E - red
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFFF50E0E), const Color(0xFFFF4444)],
+      'icon': Icons.priority_high,
+      'label': 'URGENT',
+    },
+    'PICK-UP': {
+      'backgroundColor': const Color(0xFF15EE81), // #15EE81 - green
+      'textColor': Colors.black,
+      'gradientColors': [const Color(0xFF15EE81), const Color(0xFF4CAF50)],
+      'icon': Icons.local_shipping,
+      'label': 'PICKUP',
+    },
+    'DELIVERY': {
+      'backgroundColor': const Color(0xFFFFB266), // #FFB266 - orange
+      'textColor': Colors.black,
+      'gradientColors': [const Color(0xFFFFB266), const Color(0xFFFFCC80)],
+      'icon': Icons.delivery_dining,
+      'label': 'DELIVERY',
+    },
+    'MEDREP': {
+      'backgroundColor': const Color(0xFFEAF207), // #EAF207 - yellow
+      'textColor': Colors.black,
+      'gradientColors': [const Color(0xFFEAF207), const Color(0xFFF9FD71)],
+      'icon': Icons.medical_services,
+      'label': 'MEDREP',
+    },
+    'COD': {
+      'backgroundColor': const Color(0xFFFF99FF), // #FF99FF - pink
+      'textColor': Colors.black,
+      'gradientColors': [const Color(0xFFFF99FF), const Color(0xFFFFC1FF)],
+      'icon': Icons.payments,
+      'label': 'COD',
+    },
+    'OUTSTATION': {
+      'backgroundColor': const Color(0xFF99FFFF), // #99FFFF - sky blue
+      'textColor': Colors.black,
+      'gradientColors': [const Color(0xFF99FFFF), const Color(0xFFB3E5FC)],
+      'icon': Icons.flight_takeoff,
+      'label': 'OUTSTATION',
+    },
+  };
+
+  Map<String, dynamic> getDeliveryTypeStyle(String? delType) {
+    final type = delType?.toUpperCase() ?? '';
+    return deliveryTypeConfig[type] ?? {
+      'backgroundColor': AppTheme.surface,
+      'textColor': AppTheme.onSurface,
+      'gradientColors': [AppTheme.surface, AppTheme.surfaceVariant],
+      'icon': Icons.local_shipping,
+      'label': 'STANDARD',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final deliveryStyle = getDeliveryTypeStyle(packerData.delType);
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primaryBlue.withOpacity(0.02),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.1),
-          width: 1,
+          color: (deliveryStyle['backgroundColor'] as Color).withOpacity(0.2),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.shadowColor.withOpacity(0.1),
-            blurRadius: 8,
+            color: (deliveryStyle['backgroundColor'] as Color).withOpacity(0.15),
+            blurRadius: 12,
             spreadRadius: 0,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Column(
+            children: [
+              // Header with delivery type
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: deliveryStyle['gradientColors'],
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'INV',
+                    Icon(
+                      deliveryStyle['icon'],
+                      color: deliveryStyle['textColor'],
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        deliveryStyle['label'],
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
+                          color: deliveryStyle['textColor'],
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
                       ),
                     ),
-                    const Spacer(),
                     Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: AppTheme.orange.withOpacity(0.1),
+                        color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(
-                        Icons.arrow_forward_ios,
-                        color: AppTheme.orange,
-                        size: 10,
+                        Icons.arrow_forward_ios_rounded,
+                        color: deliveryStyle['textColor'],
+                        size: 12,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  packerData.invNo ?? 'N/A',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.onSurface,
+              ),
+
+              // Content area
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Invoice number
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'INV',
+                              style: TextStyle(
+                                color: AppTheme.primaryTeal,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              packerData.invNo ?? 'N/A',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Tray information
+                      _buildInfoRow(
+                        Icons.inventory_2_outlined,
+                        'Tray',
+                        packerData.trayNo ?? 'N/A',
+                        AppTheme.coralPink,
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // Time information
+                      _buildInfoRow(
+                        Icons.schedule_outlined,
+                        'Time',
+                        _formatTime(packerData.dTime),
+                        AppTheme.primaryTeal,
+                      ),
+
+
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  Icons.inventory_2,
-                  packerData.trayNo ?? 'N/A',
-                  AppTheme.orange,
-                ),
-                const SizedBox(height: 6),
-                _buildInfoRow(
-                  Icons.access_time,
-                  packerData.dTime ?? 'N/A',
-                  AppTheme.medicalTeal,
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String value, Color color) {
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(
             icon,
-            size: 11,
+            size: 14,
             color: color,
           ),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppTheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.onSurface.withOpacity(0.6),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ],
     );
+  }
+
+  String _formatTime(String? time) {
+    if (time == null || time == 'N/A') return 'N/A';
+    // Add your time formatting logic here if needed
+    return time;
   }
 }

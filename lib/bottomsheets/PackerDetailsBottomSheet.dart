@@ -47,7 +47,7 @@ class PackerDetailsBottomSheet extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+                colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
               ),
             ),
             child: Row(
@@ -105,7 +105,7 @@ class PackerDetailsBottomSheet extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryTeal,
                         strokeWidth: 3,
                       ),
                       SizedBox(height: 16),
@@ -130,7 +130,7 @@ class PackerDetailsBottomSheet extends StatelessWidget {
                       Icon(
                         Icons.inbox_outlined,
                         size: 48,
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryTeal,
                       ),
                       SizedBox(height: 16),
                       Text(
@@ -181,7 +181,7 @@ class PackerDetailCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.15),
+          color: AppTheme.primaryTeal.withOpacity(0.15),
           width: 1,
         ),
         boxShadow: [
@@ -207,7 +207,7 @@ class PackerDetailCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.medicalTeal, AppTheme.mintGreen],
+                      colors: [AppTheme.lightTeal, AppTheme.accentGreen],
                     ),
                     borderRadius: BorderRadius.circular(5),
                   ),
@@ -271,7 +271,7 @@ class PackerDetailCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.orange, AppTheme.gold],
+                      colors: AppTheme.goldGradient,
                     ),
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -300,7 +300,7 @@ class PackerDetailCard extends StatelessWidget {
                   child: _buildCompactDetail(
                     Icons.batch_prediction,
                     detail.batchNo ?? 'N/A',
-                    AppTheme.purple,
+                    AppTheme.lavender,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -311,7 +311,7 @@ class PackerDetailCard extends StatelessWidget {
                   child: _buildCompactDetail(
                     Icons.schedule,
                     detail.sExpDate ?? 'N/A',
-                    AppTheme.orange,
+                    AppTheme.coralPink,
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -322,7 +322,7 @@ class PackerDetailCard extends StatelessWidget {
                   child: _buildCompactDetail(
                     Icons.currency_rupee,
                     detail.mrp != null ? '₹${detail.mrp}' : 'N/A',
-                    AppTheme.mintGreen,
+                    AppTheme.accentGreen,
                   ),
                 ),
               ],

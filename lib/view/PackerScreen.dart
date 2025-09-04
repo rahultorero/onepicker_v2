@@ -33,11 +33,7 @@ class PackerScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryBlue,
-              AppTheme.medicalTeal,
-              AppTheme.mintGreen,
-            ],
+            colors: AppTheme.primaryGradient,
           ),
         ),
       ),
@@ -122,7 +118,7 @@ class PackerScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.2),
+          color: AppTheme.primaryTeal.withOpacity(0.2),
           width: 1,
         ),
         boxShadow: [
@@ -147,7 +143,7 @@ class PackerScreen extends StatelessWidget {
                 ),
                 prefixIcon: Icon(
                   Icons.search,
-                  color: AppTheme.primaryBlue,
+                  color: AppTheme.primaryTeal,
                   size: 20,
                 ),
                 border: InputBorder.none,
@@ -167,7 +163,7 @@ class PackerScreen extends StatelessWidget {
               ? IconButton(
             icon: Icon(
               Icons.clear,
-              color: AppTheme.primaryBlue,
+              color: AppTheme.primaryTeal,
               size: 20,
             ),
             onPressed: controller.clearSearch,
@@ -181,7 +177,7 @@ class PackerScreen extends StatelessWidget {
   Widget _buildBody(PackerController controller) {
     return RefreshIndicator(
       onRefresh: controller.refreshData,
-      color: AppTheme.primaryBlue,
+      color: AppTheme.primaryTeal,
       child: Obx(() {
         if (controller.isLoadingPackerList.value && controller.packerList.isEmpty) {
           return _buildLoadingState();
@@ -202,7 +198,7 @@ class PackerScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: AppTheme.primaryBlue,
+            color: AppTheme.primaryTeal,
             strokeWidth: 3,
           ),
           SizedBox(height: 16),
@@ -229,8 +225,8 @@ class PackerScreen extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppTheme.primaryBlue.withOpacity(0.1),
-                  AppTheme.medicalTeal.withOpacity(0.1),
+                  AppTheme.primaryTeal.withOpacity(0.1),
+                  AppTheme.lightTeal.withOpacity(0.1),
                 ],
               ),
               shape: BoxShape.circle,
@@ -238,7 +234,7 @@ class PackerScreen extends StatelessWidget {
             child: Icon(
               isSearching ? Icons.search_off : Icons.inventory_outlined,
               size: 48,
-              color: AppTheme.primaryBlue,
+              color: AppTheme.primaryTeal,
             ),
           ),
           const SizedBox(height: 16),
@@ -271,14 +267,14 @@ class PackerScreen extends StatelessWidget {
       child: GridView.builder(
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          childAspectRatio: 0.92,
+          childAspectRatio: 1.1,
           crossAxisSpacing: 8,
           mainAxisSpacing: 8,
         ),
         itemCount: controller.filteredPackerList.length,
         itemBuilder: (context, index) {
           final packerData = controller.filteredPackerList[index];
-          return PackerItemCard(
+          return CompactPackerCard(
             packerData: packerData,
             index: index,
             onTap: () => controller.onPackerItemTap(packerData),
@@ -288,13 +284,12 @@ class PackerScreen extends StatelessWidget {
     );
   }
 }
-
-class PackerItemCard extends StatelessWidget {
+class CompactPackerCard extends StatefulWidget {
   final PickerData packerData;
   final int index;
   final VoidCallback onTap;
 
-  const PackerItemCard({
+  const CompactPackerCard({
     Key? key,
     required this.packerData,
     required this.index,
@@ -302,137 +297,272 @@ class PackerItemCard extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<CompactPackerCard> createState() => _CompactPackerCardState();
+}
+
+class _CompactPackerCardState extends State<CompactPackerCard> {
+  Color _getBackgroundColor() {
+    final delType = widget.packerData.delType?.toUpperCase() ?? '';
+
+    switch (delType) {
+      case 'URGENT':
+        return const Color(0xFFF50E0E); // Red
+      case 'PICK-UP':
+        return const Color(0xFF15EE81); // Green
+      case 'DELIVERY':
+        return const Color(0xFFFFB266); // Orange
+      case 'MEDREP':
+        return const Color(0xFFEAF207); // Yellow
+      case 'COD':
+        return const Color(0xFFFF99FF); // Pink
+      case 'OUTSTATION':
+        return const Color(0xFF99FFFF); // Sky Blue
+      default:
+        return AppTheme.primaryTeal; // Default teal for packer
+    }
+  }
+
+  Color _getTextColor() {
+    final delType = widget.packerData.delType?.toUpperCase() ?? '';
+    return delType == 'URGENT' ? Colors.white : Colors.black;
+  }
+
+  List<String> _getTrayNumbers() {
+    final trayNo = widget.packerData.trayNo ?? '';
+    if (trayNo.isEmpty || trayNo == 'N/A') return [];
+
+    // Split by comma and clean up each tray number
+    return trayNo
+        .split(',')
+        .map((tray) => tray.trim())
+        .where((tray) => tray.isNotEmpty)
+        .toList();
+  }
+
+  void _showTrayModal() {
+    final trayNumbers = _getTrayNumbers();
+    if (trayNumbers.length <= 1) return;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'All Trays',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.onSurface,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: Icon(
+                        Icons.close,
+                        size: 20,
+                        color: AppTheme.onSurface,
+                      ),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: trayNumbers.map((trayNo) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: AppTheme.amberGold.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppTheme.amberGold.withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        trayNo,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.onSurface,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTraySection() {
+    final trayNumbers = _getTrayNumbers();
+
+    if (trayNumbers.isEmpty) {
+      return _buildSingleTrayRow('N/A', false);
+    }
+
+    if (trayNumbers.length == 1) {
+      return _buildSingleTrayRow(trayNumbers.first, false);
+    }
+
+    // Multiple trays - show first one and count with tap to show modal
+    return _buildSingleTrayRow(
+      '${trayNumbers.first} (+${trayNumbers.length - 1} more)',
+      true,
+    );
+  }
+
+  Widget _buildSingleTrayRow(String displayText, bool canExpand) {
+    return GestureDetector(
+      onTap: canExpand ? _showTrayModal : null,
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.inventory_2,
+                  size: 13,
+                  color: AppTheme.amberGold,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    displayText,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.onSurface,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (canExpand) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.open_in_new,
+                    size: 14,
+                    color: AppTheme.amberGold,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            AppTheme.primaryBlue.withOpacity(0.02),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.1),
+          color: AppTheme.shadowColor.withOpacity(0.1),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.shadowColor.withOpacity(0.1),
-            blurRadius: 8,
+            color: AppTheme.shadowColor.withOpacity(0.05),
+            blurRadius: 4,
             spreadRadius: 0,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          onTap: widget.onTap,
+          splashColor: AppTheme.primaryTeal.withOpacity(0.1),
+          highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                // Invoice Number with DelType Color Background
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getBackgroundColor(),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    widget.packerData.invNo ?? 'N/A',
+                    style: TextStyle(
+                      color: _getTextColor(),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Tray section with modal display for multiple trays
+                _buildTraySection(),
+
+                const SizedBox(height: 4),
+
+                // Time
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
-                        ),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'INV',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                    Icon(
+                      Icons.access_time,
+                      size: 12,
+                      color: AppTheme.lightTeal,
                     ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.orange.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward_ios,
-                        color: AppTheme.orange,
-                        size: 10,
+                    const SizedBox(width: 4),
+                    Text(
+                      widget.packerData.iTime ?? 'N/A',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.onSurface,
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  packerData.invNo ?? 'N/A',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.onSurface,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  Icons.inventory_2,
-                  packerData.trayNo ?? 'N/A',
-                  AppTheme.orange,
-                ),
-                const SizedBox(height: 6),
-                _buildInfoRow(
-                  Icons.access_time,
-                  packerData.iTime ?? 'N/A',
-                  AppTheme.medicalTeal,
                 ),
               ],
             ),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String value, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Icon(
-            icon,
-            size: 11,
-            color: color,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppTheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
     );
   }
 }

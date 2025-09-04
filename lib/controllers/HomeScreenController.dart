@@ -4,9 +4,13 @@ import 'dart:math' as math;
 import 'package:get/get.dart';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
+import 'package:onepicker/bottomsheets/LsnSelectionBottomSheet.dart';
 import 'package:onepicker/controllers/LoginController.dart';
+import 'package:onepicker/model/LSNModel.dart';
 import 'package:onepicker/view/CheckerScreen.dart';
+import 'package:onepicker/view/MergerScreen.dart';
 import 'package:onepicker/view/PackerScreen.dart';
+import 'package:onepicker/view/PickerManager.dart';
 import 'dart:convert';
 
 import '../bottomsheets/LocationSelectionBottomSheet.dart';
@@ -31,7 +35,11 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
   // Location related observables
   var isLoadingLocations = false.obs;
   var locations = <LocationData>[].obs;
+  var lsns = <LSNList>[].obs;
+
   var selectedLocation = Rxn<LocationData>();
+  var selectedLsn =  Rxn<LSNList>();
+  static String? selectLsn = '';
   static String? selectLocation = "";
   static String? selectPrinter = '';
   static String? selectCamera = '';
@@ -40,50 +48,58 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
   final List<Map<String, dynamic>> quickServices = [
     {
       'title': 'Admin',
-      'subtitle': 'Real Time Labour Monitoring',
+      'subtitle': 'Manage users, roles & settings',
       'icon': Icons.computer_sharp,
-      'color': AppTheme.primaryBlue,
+      'color': AppTheme.primaryTeal,
       'gradient': AppTheme.primaryGradient,
       'isNew': false,
     },
     {
       'title': 'Tray Assigner',
-      'subtitle': 'Real Time NST Test Tracking',
+      'subtitle': 'Assign trays for seamless order flow',
       'icon': Icons.assignment_turned_in_outlined,
-      'color': AppTheme.purple,
-      'gradient': [AppTheme.purple, AppTheme.primaryBlue],
+      'color': AppTheme.lavender,
+      'gradient': AppTheme.lavenderGradient,
       'isNew': false,
     },
     {
       'title': 'Picker',
-      'subtitle': 'Track your BabyBeat NST Test',
+      'subtitle': 'Pick items quickly & accurately',
       'icon': Icons.delivery_dining_outlined,
-      'color': AppTheme.orange,
-      'gradient': [AppTheme.orange, AppTheme.gold],
+      'color': AppTheme.amberGold,
+      'gradient': AppTheme.bronzeGradient,
       'isNew': false,
     },
     {
       'title': 'Picker Manager',
-      'subtitle': 'Take UTI test and get report instantly',
+      'subtitle': 'Monitor and manage picking process',
       'icon': Icons.manage_accounts_rounded,
-      'color': AppTheme.medicalTeal,
-      'gradient': [AppTheme.medicalTeal, AppTheme.mintGreen],
+      'color': AppTheme.primaryTeal,
+      'gradient': AppTheme.coolGradient,
       'isNew': false,
     },
     {
       'title': 'Checker',
-      'subtitle': 'Live ApneBoot Device Monitoring',
+      'subtitle': 'Verify items before dispatch',
       'icon': Icons.fact_check_outlined,
-      'color': AppTheme.accent,
+      'color': AppTheme.accentGreen,
       'gradient': AppTheme.accentGradient,
       'isNew': false,
     },
     {
       'title': 'Packer',
-      'subtitle': 'Live ApneBoot Device Monitoring',
+      'subtitle': 'Pack orders securely & efficiently',
       'icon': Icons.backpack,
-      'color': Color(0xFF199A8E),
+      'color': const Color(0xFF199A8E),
       'gradient': AppTheme.primaryGradient,
+      'isNew': false,
+    },
+    {
+      'title': 'Merger',
+      'subtitle': 'Combine multiple orders into one',
+      'icon': Icons.merge_type_rounded,
+      'color': Colors.deepPurple,
+      'gradient': AppTheme.lavenderGradient,
       'isNew': false,
     },
   ];
@@ -169,8 +185,8 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
             Get.snackbar(
               'Info',
               'No locations available',
-              backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-              colorText: AppTheme.primaryBlue,
+              backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
+              colorText: AppTheme.primaryTeal,
             );
           }
         }
@@ -205,6 +221,77 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
     }
   }
 
+  Future<void> fetchLsn() async {
+    try {
+      isLoadingLocations(true);
+
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+      if (loginData?.response?.empId == null) {
+        Get.snackbar(
+          'Error',
+          'Invalid user. Please login again.',
+          backgroundColor: Colors.red.withOpacity(0.2),
+          colorText: Colors.white,
+          icon: const Icon(Icons.error, color: Colors.white),
+        );
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}lsn'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userid': loginData!.response!.empId.toString(),
+          'empid': loginData.response!.empId.toString(),
+          'companyid': LoginController.selectedCompanyId.toString(),
+          'branchid': LoginController.selectedBranchId.toString(),
+          'appversion': 'V1',
+        },
+      );
+
+      print("🌍 [FETCH LSN] Status => ${response.statusCode}");
+      print("🌍 [FETCH LSN] Body => ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        final lsnModel = LSNModel.fromJson(jsonData);
+
+        if (lsnModel.status == '200') {
+          final data = lsnModel.response ?? [];
+
+          // Create "All LSN" entry
+          final allLsn = LSNList(lsn: "All LSN");
+
+          // Add it as the first item
+          lsns.assignAll([allLsn, ...data]);
+        } else {
+          Get.snackbar(
+            'Error',
+            lsnModel.message ?? 'Failed to fetch LSN data',
+            backgroundColor: Colors.red.withOpacity(0.2),
+            colorText: Colors.white,
+            icon: const Icon(Icons.error, color: Colors.white),
+          );
+        }
+      } else {
+        Get.snackbar(
+          'Error',
+          'Server error. Please try again later.',
+          backgroundColor: Colors.red.withOpacity(0.2),
+          colorText: Colors.white,
+          icon: const Icon(Icons.error, color: Colors.white),
+        );
+      }
+    } catch (e, stack) {
+      print("🔥 [FETCH LSN] Exception => $e");
+      print("🔥 [FETCH LSN] Stacktrace => $stack");
+    } finally {
+      isLoadingLocations(false);
+    }
+  }
+
+
   // Handle service tap
   void onServiceTap(Map<String, dynamic> service) {
     if (service['title'] == 'Admin') {
@@ -214,20 +301,43 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
     } else if (service['title'] == 'Picker') {
       // Show location selection bottom sheet
       showLocationBottomSheet();
+    }else if (service['title'] == 'Picker Manager') {
+      // Show location selection bottom sheet
+      showLsnBottomSheet();
     } else if (service['title'] == 'Packer') {
       Get.to(() => PackerScreen());
     }else if (service['title'] == 'Checker') {
       _showPrinterSelection(Get.context!);
+    }else if (service['title'] == 'Merger') {
+      Get.to(() => MergerScreen());
     } else {
       Get.snackbar(
         service['title'],
         'Opening ${service['title']}...',
-        backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-        colorText: AppTheme.primaryBlue,
+        backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
+        colorText: AppTheme.primaryTeal,
         duration: const Duration(seconds: 2),
       );
     }
   }
+
+  void showLsnBottomSheet() {
+
+    selectedLsn.value = LSNList(lsn: 'All LSN');
+
+
+    // Fetch locations first, then show bottom sheet
+    fetchLsn().then((_) {
+      if (lsns.isNotEmpty) {
+        Get.bottomSheet(
+          LsnSelectionBottomSheet(),
+          backgroundColor: Colors.transparent,
+          isScrollControlled: true,
+        );
+      }
+    });
+  }
+
 
   // Show location selection bottom sheet
   void showLocationBottomSheet() {
@@ -269,6 +379,31 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
   }
 
   // Handle next button tap
+
+  void managerButtonTap(){
+    if (selectedLsn.value != null) {
+      // Save selected location to static variable
+      selectLsn = selectedLsn.value!.lsn;
+      if(selectLsn == "All LSN"){
+        selectLsn = '999999';
+      }
+
+      // Close bottom sheet
+
+      Get.back();
+
+
+      Get.to(() => PickerManager());
+    }else {
+      Get.snackbar(
+        'Warning',
+        'Please select a location first',
+        backgroundColor: Colors.orange.withOpacity(0.1),
+        colorText: Colors.orange,
+      );
+    }
+  }
+
   void onNextButtonTap() {
     if (selectedLocation.value != null) {
       // Save selected location to static variable
@@ -282,9 +417,9 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
       Get.back();
       print(selectLocation);
 
-      // TODO: Navigate to your Picker screen
+
       Get.to(() => PickerScreen());
-    } else {
+    }  else {
       Get.snackbar(
         'Warning',
         'Please select a location first',
@@ -292,6 +427,10 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
         colorText: Colors.orange,
       );
     }
+
+
+
+
   }
 
   @override

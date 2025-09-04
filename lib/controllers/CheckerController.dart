@@ -18,6 +18,7 @@ class CheckerController extends GetxController {
   // Observables
   var isLoadingPackerList = false.obs;
   var isLoadingPackerDetails = false.obs;
+  var isSubmittingData = false.obs; // Added for submit loading state
   var packerList = <PickerData>[].obs;
   var filteredPackerList = <PickerData>[].obs;
   var packerDetails = <PickerMenuDetail>[].obs;
@@ -93,8 +94,8 @@ class CheckerController extends GetxController {
             Get.snackbar(
               'Info',
               'No packer data available',
-              backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-              colorText: AppTheme.primaryBlue,
+              backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
+              colorText: AppTheme.primaryTeal,
             );
           }
         } else {
@@ -135,21 +136,25 @@ class CheckerController extends GetxController {
       final apiConfig = await ApiConfig.load();
       final loginData = await ApiConfig.getLoginData();
 
+      final body = {
+        'companyid': LoginController.selectedCompanyId.toString(),
+        'useas': '2',
+        'siid': packerData.sIId.toString(),
+        'trayno': packerData.trayNo ?? '',
+        'branchid': LoginController.selectedBranchId.toString(),
+        'empid': loginData?.response?.empId.toString(),
+        'brk': LoginController.selectedFloorId.toString(),
+        'appversion': 'V1',
+      };
+
+      print("📦 Request body: $body");
+
       final response = await http.post(
         Uri.parse('${apiConfig.baseUrl}invoice_dtls'),
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: {
-          'companyid': LoginController.selectedCompanyId.toString(),
-          'useas': '3',
-          'siid': packerData.sIId.toString(),
-          'trayno': packerData.trayNo ?? '',
-          'branchid': LoginController.selectedBranchId.toString(),
-          'empid': loginData?.response?.empId.toString(),
-          'brk': LoginController.selectedFloorId.toString(),
-          'appversion': 'V1',
-        },
+        body: body,
       );
 
       if (response.statusCode == 200) {
@@ -160,12 +165,13 @@ class CheckerController extends GetxController {
           packerDetails.assignAll(detailModel.menuDetailList ?? []);
           if (packerDetails.isNotEmpty) {
             Get.to(CheckerDetailScreen(pickerData: packerData,));
+            print("checkkkk value  ${packerDetails.toJson()}");
           } else {
             Get.snackbar(
               'Info',
               'No details available for this item',
-              backgroundColor: AppTheme.primaryBlue.withOpacity(0.1),
-              colorText: AppTheme.primaryBlue,
+              backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
+              colorText: AppTheme.primaryTeal,
             );
           }
         } else {
@@ -197,6 +203,122 @@ class CheckerController extends GetxController {
     }
   }
 
+  // API call to submit checked items
+  Future<void> submitCheckedItems(PickerData pickerData, List<PickerMenuDetail> checkedItems) async {
+    if (checkedItems.isEmpty) {
+      Get.snackbar(
+        'Warning',
+        'No items selected for submission',
+        backgroundColor: Colors.orange.withOpacity(0.1),
+        colorText: Colors.orange.shade700,
+      );
+      return;
+    }
+
+    try {
+      isSubmittingData(true);
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+
+      // Construct JSON payload similar to the reference code
+      final Map<String, dynamic> jsonBody = {
+        "companyId": LoginController.selectedCompanyId.toString(),
+        "useas": "2",
+        "siid": pickerData.sIId.toString(),
+        "brchid": LoginController.selectedBranchId.toString(),
+        "empid": loginData?.response?.empId.toString(),
+        "settingPCamera": HomeScreenController.selectCamera ?? "", // Camera setting
+        "brk": LoginController.selectedFloorId.toString(),
+        "istempquit": 1,
+        "appversion": "V1",
+      };
+
+      // Build item details array
+      List<Map<String, dynamic>> itemDetailsArray = [];
+      for (var item in checkedItems) {
+        Map<String, dynamic> itemDetail = {
+          "siid": pickerData.sIId.toString(),
+          "itemdetailid": item.itemDetailId?.toString() ?? "",
+          "batchno": item.batchNo ?? "",
+          "mrp": item.mrp?.toString() ?? "",
+        };
+        itemDetailsArray.add(itemDetail);
+      }
+
+      jsonBody["itemdetails"] = itemDetailsArray;
+
+      print("🚀 Submit payload: ${json.encode(jsonBody)}");
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}saveproduct'),
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+        },
+        body: json.encode(jsonBody),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['status'] == '200') {
+          // Success - show success message and navigate back
+          Get.snackbar(
+            'Success',
+            responseData['message'] ?? 'Items submitted successfully!',
+            backgroundColor: Colors.green.withOpacity(0.85),
+            colorText: Colors.white, // 👈 more contrast
+            duration: const Duration(seconds: 3),
+            snackPosition: SnackPosition.BOTTOM,
+            margin: const EdgeInsets.all(12),
+            borderRadius: 8,
+          );
+
+
+          // Navigate back to previous screen after short delay
+          Future.delayed(const Duration(milliseconds: 500), () {
+            Get.back();
+            // Refresh the packer list to reflect updated status
+            refreshData();
+          });
+
+        } else if (responseData['status'] == '401') {
+          // Authentication error
+          Get.snackbar(
+            'Error',
+            'Authentication failed. Please login again.',
+            backgroundColor: Colors.red.withOpacity(0.1),
+            colorText: Colors.red,
+          );
+        } else {
+          // Other error status
+          Get.snackbar(
+            'Error',
+            responseData['message'] ?? 'Failed to submit items',
+            backgroundColor: Colors.red.withOpacity(0.1),
+            colorText: Colors.red,
+          );
+        }
+      } else {
+        Get.snackbar(
+          'Error',
+          'Server error. Please try again later.',
+          backgroundColor: Colors.red.withOpacity(0.1),
+          colorText: Colors.red,
+        );
+      }
+    } catch (e) {
+      print("❌ Submit error: $e");
+      Get.snackbar(
+        'Error',
+        'Failed to submit items. Please check your internet connection.',
+        backgroundColor: Colors.red.withOpacity(0.1),
+        colorText: Colors.red,
+        duration: const Duration(seconds: 3),
+      );
+    } finally {
+      isSubmittingData(false);
+    }
+  }
 
   // Handle packer item tap
   void onPackerItemTap(PickerData packerData) {

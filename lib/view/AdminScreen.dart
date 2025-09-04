@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../controllers/AdminController.dart';
 import '../model/UserListModel.dart';
 import '../theme/AppTheme.dart';
+import '../widget/AppLoader.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({super.key});
@@ -38,7 +39,7 @@ class AdminScreen extends StatelessWidget {
                     colors: [
                       AppTheme.primaryGradient[0],
                       AppTheme.primaryGradient[1],
-                      AppTheme.medicalTeal.withOpacity(0.8),
+                      AppTheme.primaryTeal.withOpacity(0.8),
                     ],
                   ),
                 ),
@@ -146,10 +147,10 @@ class AdminScreen extends StatelessWidget {
                       ),
                       TabBar(
                         controller: controller.tabController,
-                        indicatorColor: AppTheme.primaryBlue,
+                        indicatorColor: AppTheme.primaryTeal,
                         indicatorWeight: 3,
                         indicatorSize: TabBarIndicatorSize.label,
-                        labelColor: AppTheme.primaryBlue,
+                        labelColor: AppTheme.primaryTeal,
                         unselectedLabelColor: Colors.grey,
                         labelStyle: const TextStyle(
                           fontWeight: FontWeight.w700,
@@ -171,7 +172,7 @@ class AdminScreen extends StatelessWidget {
                                   margin: const EdgeInsets.only(left: 8),
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.accent,
+                                    color: AppTheme.warmAccent,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   constraints: const BoxConstraints(minWidth: 20),
@@ -201,7 +202,7 @@ class AdminScreen extends StatelessWidget {
                                   margin: const EdgeInsets.only(left: 8),
                                   padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.medicalTeal,
+                                    color: AppTheme.lightTeal,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   constraints: const BoxConstraints(minWidth: 20),
@@ -234,7 +235,7 @@ class AdminScreen extends StatelessWidget {
               center: Alignment.topCenter,
               radius: 2.0,
               colors: [
-                AppTheme.lightBlue.withOpacity(0.05),
+                AppTheme.lightTeal.withOpacity(0.05),
                 AppTheme.background,
                 AppTheme.background,
               ],
@@ -274,44 +275,57 @@ class _SearchBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 38, // Reduced from 42
+      height: 40,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(18), // Reduced from 21
+        color: Colors.white.withOpacity(0.2), // container background
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: Colors.white.withOpacity(0.3),
           width: 1,
         ),
       ),
+      alignment: Alignment.center,
       child: TextField(
+        controller: controller.searchController,
         onChanged: controller.searchUsers,
-        style: const TextStyle(color: Colors.white, fontSize: 12), // Reduced from 14
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+        ),
+        textAlignVertical: TextAlignVertical.center,
+        cursorColor: Colors.white70,
         decoration: InputDecoration(
           hintText: 'Search users by name...',
           hintStyle: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 14, // Reduced from 14
+            color: Colors.white.withOpacity(0.6),
+            fontSize: 14,
           ),
           prefixIcon: Icon(
             Icons.search,
-            color: Colors.white.withOpacity(0.8),
-            size: 16, // Reduced from 18
+            color: Colors.white.withOpacity(0.7),
+            size: 18,
           ),
           suffixIcon: Obx(() => controller.searchQuery.isNotEmpty
               ? IconButton(
+            padding: EdgeInsets.zero,
             onPressed: controller.clearSearch,
             icon: Icon(
               Icons.clear,
-              color: Colors.white.withOpacity(0.8),
-              size: 14, // Reduced from 16
+              color: Colors.white.withOpacity(0.7),
+              size: 16,
             ),
           )
-              : const SizedBox()),
+              : const SizedBox.shrink()),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10), // Reduced from 16,12
+          enabledBorder: InputBorder.none,  // 👈 disable internal borders
+          focusedBorder: InputBorder.none,  // 👈 disable teal/primary highlight
+          filled: false,                    // 👈 disable InputDecoration bg
+          isCollapsed: true,                // 👈 keeps it tight
+          contentPadding: EdgeInsets.zero,  // 👈 no weird spacing
         ),
       ),
     );
+
   }
 }
 // Custom Loading Widget
@@ -327,16 +341,9 @@ class _LoadingWidget extends StatelessWidget {
           Container(
             width: 60,
             height: 60,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: AppTheme.primaryGradient),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: const Padding(
+            child:  Padding(
               padding: EdgeInsets.all(15),
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 3,
-              ),
+              child: LoadingIndicator(),
             ),
           ),
           const SizedBox(height: 24),
@@ -372,7 +379,7 @@ class _UserListView extends StatelessWidget {
         ? _EmptyState(isNewUser: isNewUser, hasSearchQuery: controller.searchQuery.isNotEmpty)
         : RefreshIndicator(
       onRefresh: controller.fetchUserLists,
-      color: AppTheme.primaryBlue,
+      color: AppTheme.primaryTeal,
       backgroundColor: Colors.white,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
@@ -413,17 +420,14 @@ class _EmptyState extends StatelessWidget {
             height: 120,
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [
-                  AppTheme.primaryBlue.withOpacity(0.1),
-                  AppTheme.medicalTeal.withOpacity(0.1),
-                ],
+                colors: AppTheme.primaryGradient,
               ),
               borderRadius: BorderRadius.circular(60),
             ),
             child: Icon(
               hasSearchQuery ? Icons.search_off : Icons.people_outline,
               size: 60,
-              color: AppTheme.primaryBlue.withOpacity(0.4),
+              color: AppTheme.primaryTeal.withOpacity(0.4),
             ),
           ),
           const SizedBox(height: 24),
@@ -484,7 +488,7 @@ class _UserCard extends StatelessWidget {
             offset: const Offset(0, 4), // Reduced from 6
           ),
           BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.04),
+            color: AppTheme.primaryTeal.withOpacity(0.04),
             blurRadius: 24, // Reduced from 32
             offset: const Offset(0, 8), // Reduced from 12
           ),
@@ -557,12 +561,12 @@ class _UserCard extends StatelessWidget {
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), // Reduced from 8,3
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
-                                      colors: [AppTheme.accent, AppTheme.accent.withOpacity(0.8)],
+                                      colors: AppTheme.accentGradient,
                                     ),
                                     borderRadius: BorderRadius.circular(10), // Reduced from 12
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppTheme.accent.withOpacity(0.2),
+                                        color: AppTheme.accentGreen.withOpacity(0.2),
                                         blurRadius: 4, // Reduced from 6
                                         offset: const Offset(0, 1), // Reduced from 2
                                       ),
@@ -615,17 +619,17 @@ class _UserCard extends StatelessWidget {
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3), // Reduced from 8,4
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryBlue.withOpacity(0.08),
+                          color: AppTheme.primaryTeal.withOpacity(0.08),
                           borderRadius: BorderRadius.circular(8), // Reduced from 10
                           border: Border.all(
-                            color: AppTheme.primaryBlue.withOpacity(0.15),
+                            color: AppTheme.primaryTeal.withOpacity(0.15),
                             width: 1,
                           ),
                         ),
                         child: Text(
                           role,
                           style: TextStyle(
-                            color: AppTheme.primaryBlue,
+                            color: AppTheme.primaryTeal,
                             fontSize: 9, // Reduced from 10
                             fontWeight: FontWeight.w600,
                           ),
@@ -664,8 +668,8 @@ class _UserCard extends StatelessWidget {
                         text: 'Edit',
                         icon: Icons.edit_outlined,
                         gradient: [
-                          AppTheme.medicalTeal,
-                          AppTheme.medicalTeal.withOpacity(0.8),
+                          AppTheme.lightTeal,
+                          AppTheme.lightTeal.withOpacity(0.8),
                         ],
                       ),
                     ),
@@ -677,8 +681,8 @@ class _UserCard extends StatelessWidget {
                         text: 'Roles',
                         icon: Icons.assignment_outlined,
                         gradient: [
-                          AppTheme.primaryBlue,
-                          AppTheme.primaryBlue.withOpacity(0.8),
+                          AppTheme.primaryTeal,
+                          AppTheme.primaryTeal.withOpacity(0.8),
                         ],
                       ),
                     ),
@@ -694,9 +698,9 @@ class _UserCard extends StatelessWidget {
 
   List<Color> _getAvatarColors(int index) {
     final colorSets = [
-      [AppTheme.primaryBlue, AppTheme.medicalTeal],
-      [AppTheme.medicalTeal, AppTheme.accent],
-      [AppTheme.accent, AppTheme.primaryBlue],
+      AppTheme.primaryGradient,
+      AppTheme.bronzeGradient,
+      AppTheme.accentGradient,
       [const Color(0xFF6366F1), const Color(0xFF8B5CF6)],
       [const Color(0xFFEC4899), const Color(0xFFF59E0B)],
     ];
@@ -769,73 +773,74 @@ class EditUserDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         width: double.maxFinite,
-        constraints: const BoxConstraints(maxHeight: 500), // Reduced from 600
+        height: 480, // Fixed height for better control
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20), // Reduced from 28
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 20, // Reduced from 30
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
               spreadRadius: 0,
-              offset: const Offset(0, 12), // Reduced from 20
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            // Header with gradient
+            // Fixed Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16), // Reduced from 24
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [AppTheme.primaryGradient[0], AppTheme.primaryGradient[1]],
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20), // Reduced from 28
-                  topRight: Radius.circular(20),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8), // Reduced from 12
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12), // Reduced from 16
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.edit, color: Colors.white, size: 20), // Reduced from 24
+                    child: const Icon(Icons.edit, color: Colors.white, size: 18),
                   ),
-                  const SizedBox(width: 12), // Reduced from 16
+                  const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
                       'Edit User',
                       style: TextStyle(
-                        fontSize: 20, // Reduced from 24
-                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                         color: Colors.white,
                       ),
                     ),
                   ),
                   IconButton(
                     onPressed: () => Get.back(),
-                    icon: const Icon(Icons.close, color: Colors.white, size: 20), // Reduced from 24
+                    icon: const Icon(Icons.close, color: Colors.white, size: 18),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white.withOpacity(0.2),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10), // Reduced from 12
+                        borderRadius: BorderRadius.circular(8),
                       ),
+                      minimumSize: const Size(36, 36),
                     ),
                   ),
                 ],
               ),
             ),
-            // Content
-            Flexible(
+
+            // Scrollable Content
+            Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16), // Reduced from 24
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
                     _ModernTextField(
@@ -844,14 +849,14 @@ class EditUserDialog extends StatelessWidget {
                       icon: Icons.person_outline,
                       hint: 'Enter full name',
                     ),
-                    const SizedBox(height: 16), // Reduced from 20
+                    const SizedBox(height: 16),
                     _ModernTextField(
                       controller: controller.usernameController,
                       label: 'Username',
                       icon: Icons.account_circle_outlined,
                       hint: 'Enter username',
                     ),
-                    const SizedBox(height: 16), // Reduced from 20
+                    const SizedBox(height: 16),
                     _ModernTextField(
                       controller: controller.passwordController,
                       label: 'New Password',
@@ -859,7 +864,7 @@ class EditUserDialog extends StatelessWidget {
                       hint: 'Enter new password',
                       isPassword: true,
                     ),
-                    const SizedBox(height: 16), // Reduced from 20
+                    const SizedBox(height: 16),
                     _ModernTextField(
                       controller: controller.confirmPasswordController,
                       label: 'Confirm Password',
@@ -867,28 +872,40 @@ class EditUserDialog extends StatelessWidget {
                       hint: 'Confirm password',
                       isPassword: true,
                     ),
-                    const SizedBox(height: 24), // Reduced from 32
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _ModernDialogButton(
-                            onPressed: () => Get.back(),
-                            text: 'Cancel',
-                            isOutlined: true,
-                          ),
-                        ),
-                        const SizedBox(width: 12), // Reduced from 16
-                        Expanded(
-                          child: _ModernDialogButton(
-                            onPressed: controller.updateUser,
-                            text: 'Update User',
-                            gradient: [AppTheme.primaryBlue, AppTheme.medicalTeal],
-                          ),
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
+              ),
+            ),
+
+            // Fixed Bottom Buttons
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ModernDialogButton(
+                      onPressed: () => Get.back(),
+                      text: 'Cancel',
+                      isOutlined: true,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ModernDialogButton(
+                      onPressed: controller.updateUser,
+                      text: 'Update User',
+                      gradient: [AppTheme.primaryTeal, AppTheme.lightTeal],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -897,7 +914,7 @@ class EditUserDialog extends StatelessWidget {
     );
   }
 }
-// Enhanced Role Assignment Dialog
+
 class RoleAssignmentDialog extends StatelessWidget {
   final AdminController controller;
 
@@ -909,46 +926,45 @@ class RoleAssignmentDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         width: double.maxFinite,
-        constraints: const BoxConstraints(maxHeight: 700),
+        height: 600, // Fixed height
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 30,
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
               spreadRadius: 0,
-              offset: const Offset(0, 20),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            // Header with gradient
+            // Fixed Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+                  colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.assignment, color: Colors.white, size: 24),
+                    child: const Icon(Icons.assignment, color: Colors.white, size: 18),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -956,18 +972,18 @@ class RoleAssignmentDialog extends StatelessWidget {
                         const Text(
                           'Assign Roles',
                           style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           'For ${controller.currentEditingUser?.eName ?? 'User'}',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             color: Colors.white.withOpacity(0.8),
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],
@@ -975,11 +991,45 @@ class RoleAssignmentDialog extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => Get.back(),
-                    icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                    icon: const Icon(Icons.close, color: Colors.white, size: 18),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white.withOpacity(0.2),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      minimumSize: const Size(36, 36),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Info Section
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.lightTeal.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primaryTeal.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: AppTheme.primaryTeal,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Select multiple roles to assign to this user',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.primaryTeal,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -987,169 +1037,137 @@ class RoleAssignmentDialog extends StatelessWidget {
               ),
             ),
 
-            // Content
-            Flexible(
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
+            // Scrollable Role List
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Obx(() => Column(
+                  children: controller.selectedRoles.keys.map((role) {
+                    final isSelected = controller.selectedRoles[role]!;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: AppTheme.lightBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(16),
+                        color: isSelected
+                            ? AppTheme.primaryTeal.withOpacity(0.08)
+                            : Colors.grey.withOpacity(0.03),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppTheme.primaryBlue.withOpacity(0.2),
+                          color: isSelected
+                              ? AppTheme.primaryTeal
+                              : Colors.grey.withOpacity(0.2),
+                          width: isSelected ? 1.5 : 1,
                         ),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: AppTheme.primaryBlue,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Select multiple roles to assign to this user',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppTheme.primaryBlue,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: Obx(() => Column(
-                        children: controller.selectedRoles.keys.map((role) {
-                          final isSelected = controller.selectedRoles[role]!;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.primaryBlue.withOpacity(0.1)
-                                  : Colors.grey.withOpacity(0.05),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected
-                                    ? AppTheme.primaryBlue
-                                    : Colors.grey.withOpacity(0.2),
-                                width: isSelected ? 2 : 1,
-                              ),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  controller.selectedRoles[role] = !isSelected;
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Row(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            controller.selectedRoles[role] = !isSelected;
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? AppTheme.primaryTeal
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? AppTheme.primaryTeal
+                                          : Colors.grey.withOpacity(0.4),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 12,
+                                  )
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Container(
-                                        width: 24,
-                                        height: 24,
-                                        decoration: BoxDecoration(
+                                      Text(
+                                        role,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
                                           color: isSelected
-                                              ? AppTheme.primaryBlue
-                                              : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: isSelected
-                                                ? AppTheme.primaryBlue
-                                                : Colors.grey.withOpacity(0.4),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        child: isSelected
-                                            ? const Icon(
-                                          Icons.check,
-                                          color: Colors.white,
-                                          size: 16,
-                                        )
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 16),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              role,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w600,
-                                                color: isSelected
-                                                    ? AppTheme.primaryBlue
-                                                    : AppTheme.onSurface,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              _getRoleDescription(role),
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: AppTheme.onSurface.withOpacity(0.6),
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                          ],
+                                              ? AppTheme.primaryTeal
+                                              : AppTheme.onSurface,
                                         ),
                                       ),
-                                      if (isSelected)
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: AppTheme.primaryBlue.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Icon(
-                                            Icons.check_circle,
-                                            color: AppTheme.primaryBlue,
-                                            size: 20,
-                                          ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _getRoleDescription(role),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: AppTheme.onSurface.withOpacity(0.6),
+                                          fontWeight: FontWeight.w400,
                                         ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ),
+                                if (isSelected)
+                                  Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryTeal.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      color: AppTheme.primaryTeal,
+                                      size: 16,
+                                    ),
+                                  ),
+                              ],
                             ),
-                          );
-                        }).toList(),
-                      )),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                )),
+              ),
+            ),
+
+            // Fixed Bottom Buttons
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ModernDialogButton(
+                      onPressed: () => Get.back(),
+                      text: 'Cancel',
+                      isOutlined: true,
                     ),
                   ),
-
-                  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _ModernDialogButton(
-                            onPressed: () => Get.back(),
-                            text: 'Cancel',
-                            isOutlined: true,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _ModernDialogButton(
-                            onPressed: controller.assignRoles,
-                            text: 'Assign Roles',
-                            gradient: [AppTheme.primaryBlue, AppTheme.medicalTeal],
-                          ),
-                        ),
-                      ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ModernDialogButton(
+                      onPressed: controller.assignRoles,
+                      text: 'Assign Roles',
+                      gradient: [AppTheme.primaryTeal, AppTheme.lightTeal],
                     ),
                   ),
                 ],
@@ -1179,7 +1197,6 @@ class RoleAssignmentDialog extends StatelessWidget {
   }
 }
 
-// User Details Dialog
 class UserDetailsDialog extends StatelessWidget {
   final AdminController controller;
   final UserData user;
@@ -1192,33 +1209,32 @@ class UserDetailsDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         width: double.maxFinite,
-        constraints: const BoxConstraints(maxHeight: 600),
+        height: 520, // Fixed height
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 30,
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 15,
               spreadRadius: 0,
-              offset: const Offset(0, 20),
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
+            // Fixed Header
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.medicalTeal, AppTheme.primaryBlue],
+                  colors: [AppTheme.lightTeal, AppTheme.primaryTeal],
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(28),
-                  topRight: Radius.circular(28),
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
               child: Column(
@@ -1229,32 +1245,33 @@ class UserDetailsDialog extends StatelessWidget {
                       const Text(
                         'User Details',
                         style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
                       ),
                       IconButton(
                         onPressed: () => Get.back(),
-                        icon: const Icon(Icons.close, color: Colors.white, size: 24),
+                        icon: const Icon(Icons.close, color: Colors.white, size: 18),
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.white.withOpacity(0.2),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                          minimumSize: const Size(36, 36),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Hero(
                     tag: 'user_avatar_${user.eCode}',
                     child: Container(
-                      width: 80,
-                      height: 80,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: Colors.white.withOpacity(0.3),
                           width: 2,
@@ -1265,19 +1282,19 @@ class UserDetailsDialog extends StatelessWidget {
                           (user.eName ?? 'U')[0].toUpperCase(),
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 32,
+                            fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Text(
                     user.eName ?? 'Unknown User',
                     style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
                   ),
@@ -1285,10 +1302,10 @@ class UserDetailsDialog extends StatelessWidget {
               ),
             ),
 
-            // Content
-            Flexible(
+            // Scrollable Content
+            Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -1297,9 +1314,7 @@ class UserDetailsDialog extends StatelessWidget {
                       title: 'User Code',
                       value: user.eCode ?? 'Not assigned',
                     ),
-
                     const SizedBox(height: 16),
-
                     _DetailItem(
                       icon: Icons.assignment_ind_outlined,
                       title: 'Assigned Roles',
@@ -1307,45 +1322,53 @@ class UserDetailsDialog extends StatelessWidget {
                           ? 'No roles assigned'
                           : user.assignedRoles.join(', '),
                     ),
-
                     const SizedBox(height: 16),
-
                     _DetailItem(
                       icon: Icons.access_time_outlined,
                       title: 'Account Status',
                       value: 'Active',
-                      valueColor: AppTheme.medicalTeal,
+                      valueColor: AppTheme.lightTeal,
                     ),
-
-                    const SizedBox(height: 32),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _ModernDialogButton(
-                            onPressed: () {
-                              Get.back();
-                              controller.showEditDialog(user);
-                            },
-                            text: 'Edit User',
-                            gradient: [AppTheme.medicalTeal, AppTheme.medicalTeal.withOpacity(0.8)],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _ModernDialogButton(
-                            onPressed: () {
-                              Get.back();
-                              controller.showRoleAssignmentDialog(user);
-                            },
-                            text: 'Assign Roles',
-                            gradient: [AppTheme.primaryBlue, AppTheme.primaryBlue.withOpacity(0.8)],
-                          ),
-                        ),
-                      ],
-                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
+              ),
+            ),
+
+            // Fixed Bottom Buttons
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.05),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ModernDialogButton(
+                      onPressed: () {
+                        Get.back();
+                        controller.showEditDialog(user);
+                      },
+                      text: 'Edit User',
+                      gradient: [AppTheme.lightTeal, AppTheme.lightTeal.withOpacity(0.8)],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ModernDialogButton(
+                      onPressed: () {
+                        Get.back();
+                        controller.showRoleAssignmentDialog(user);
+                      },
+                      text: 'Assign Roles',
+                      gradient: [AppTheme.primaryTeal, AppTheme.primaryTeal.withOpacity(0.8)],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1355,7 +1378,7 @@ class UserDetailsDialog extends StatelessWidget {
   }
 }
 
-// Detail Item Widget
+// Helper Widget for Detail Items
 class _DetailItem extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -1372,12 +1395,12 @@ class _DetailItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.grey.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.1),
+          color: Colors.grey.withOpacity(0.1),
         ),
       ),
       child: Row(
@@ -1385,16 +1408,16 @@ class _DetailItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.primaryBlue.withOpacity(0.1),
+              color: AppTheme.primaryTeal.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
               icon,
-              color: AppTheme.primaryBlue,
-              size: 20,
+              color: AppTheme.primaryTeal,
+              size: 16,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1407,11 +1430,11 @@ class _DetailItem extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: valueColor ?? AppTheme.onSurface,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1425,77 +1448,42 @@ class _DetailItem extends StatelessWidget {
   }
 }
 
-// Modern Dialog Button Widget
+// Improved Modern Dialog Button
 class _ModernDialogButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String text;
-  final List<Color>? gradient;
   final bool isOutlined;
+  final List<Color>? gradient;
 
   const _ModernDialogButton({
     required this.onPressed,
     required this.text,
-    this.gradient,
     this.isOutlined = false,
+    this.gradient,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (isOutlined) {
-      return Container(
-        height: 48,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppTheme.onSurface.withOpacity(0.2),
-            width: 1.5,
-          ),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onPressed,
-            child: Center(
-              child: Text(
-                text,
-                style: TextStyle(
-                  color: AppTheme.onSurface.withOpacity(0.7),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     return Container(
-      height: 48,
+      height: 44,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient ?? [AppTheme.primaryBlue, AppTheme.primaryBlue]),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: (gradient?[0] ?? AppTheme.primaryBlue).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        gradient: isOutlined ? null : (gradient != null ? LinearGradient(colors: gradient!) : null),
+        border: isOutlined ? Border.all(color: Colors.grey.withOpacity(0.3)) : null,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Material(
-        color: Colors.transparent,
+        color: isOutlined ? Colors.transparent : (gradient == null ? AppTheme.primaryTeal : Colors.transparent),
+        borderRadius: BorderRadius.circular(12),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           onTap: onPressed,
           child: Center(
             child: Text(
               text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+              style: TextStyle(
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
+                color: isOutlined ? AppTheme.onSurface : Colors.white,
               ),
             ),
           ),
@@ -1505,29 +1493,21 @@ class _ModernDialogButton extends StatelessWidget {
   }
 }
 
-// Modern Text Field Widget
-class _ModernTextField extends StatefulWidget {
+// Improved Modern Text Field (assumed structure)
+class _ModernTextField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final String hint;
   final IconData icon;
+  final String hint;
   final bool isPassword;
 
   const _ModernTextField({
     required this.controller,
     required this.label,
-    required this.hint,
     required this.icon,
+    required this.hint,
     this.isPassword = false,
   });
-
-  @override
-  State<_ModernTextField> createState() => _ModernTextFieldState();
-}
-
-class _ModernTextFieldState extends State<_ModernTextField> {
-  bool _obscureText = true;
-  bool _isFocused = false;
 
   @override
   Widget build(BuildContext context) {
@@ -1535,78 +1515,36 @@ class _ModernTextFieldState extends State<_ModernTextField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.label,
+          label,
           style: TextStyle(
-            fontSize: 12, // Reduced from 14
-            color: AppTheme.onSurface.withOpacity(0.8),
+            fontSize: 12,
             fontWeight: FontWeight.w600,
+            color: AppTheme.onSurface.withOpacity(0.7),
           ),
         ),
-        const SizedBox(height: 6), // Reduced from 8
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
-            color: _isFocused
-                ? AppTheme.primaryBlue.withOpacity(0.05)
-                : AppTheme.lightBlue.withOpacity(0.03),
-            borderRadius: BorderRadius.circular(12), // Reduced from 16
-            border: Border.all(
-              color: _isFocused
-                  ? AppTheme.primaryBlue
-                  : AppTheme.primaryBlue.withOpacity(0.2),
-              width: _isFocused ? 2 : 1,
-            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+            color: Colors.grey.withOpacity(0.05),
           ),
           child: TextField(
-            controller: widget.controller,
-            obscureText: widget.isPassword ? _obscureText : false,
-            style: TextStyle(
-              color: AppTheme.onSurface,
-              fontSize: 14, // Reduced from 16
+            controller: controller,
+            obscureText: isPassword,
+            style: const TextStyle(
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
-            onChanged: (value) => setState(() {}),
-            onTap: () => setState(() => _isFocused = true),
-            onTapOutside: (_) => setState(() => _isFocused = false),
             decoration: InputDecoration(
-              hintText: widget.hint,
+              hintText: hint,
               hintStyle: TextStyle(
-                color: AppTheme.onSurface.withOpacity(0.4),
-                fontSize: 14, // Reduced from 16
+                fontSize: 14,
+                color: Colors.grey.withOpacity(0.6),
               ),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(10), // Reduced from 12
-                child: Icon(
-                  widget.icon,
-                  color: _isFocused
-                      ? AppTheme.primaryBlue
-                      : AppTheme.primaryBlue.withOpacity(0.6),
-                  size: 20, // Reduced from 22
-                ),
-              ),
-              suffixIcon: widget.isPassword
-                  ? IconButton(
-                onPressed: () => setState(() => _obscureText = !_obscureText),
-                icon: Icon(
-                  _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: AppTheme.primaryBlue.withOpacity(0.6),
-                  size: 20, // Reduced from 22
-                ),
-              )
-                  : widget.controller.text.isNotEmpty
-                  ? IconButton(
-                onPressed: () {
-                  widget.controller.clear();
-                  setState(() {});
-                },
-                icon: Icon(
-                  Icons.clear,
-                  color: AppTheme.onSurface.withOpacity(0.6),
-                  size: 18, // Reduced from 20
-                ),
-              )
-                  : null,
+              prefixIcon: Icon(icon, size: 18, color: AppTheme.primaryTeal),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), // Reduced from 16,16
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
           ),
         ),
@@ -1614,6 +1552,9 @@ class _ModernTextFieldState extends State<_ModernTextField> {
     );
   }
 }
+
+// Detail Item Widget
+
 // Particle Painter for animated background
 class ParticlePainter extends CustomPainter {
   @override

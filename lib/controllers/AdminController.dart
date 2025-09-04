@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:onepicker/controllers/LoginController.dart';
 
 import '../model/UserListModel.dart';
 import '../services/services.dart';
 import '../view/AdminScreen.dart';
+import '../widget/AppLoader.dart';
 
 class AdminController extends GetxController with GetSingleTickerProviderStateMixin {
   late TabController tabController;
@@ -17,6 +19,7 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
 
   // Search functionality
   var searchQuery = ''.obs;
+  final searchController = TextEditingController();
   var filteredNewUsers = <UserData>[].obs;
   var filteredExistingUsers = <UserData>[].obs;
 
@@ -71,6 +74,8 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
   }
 
   void clearSearch() {
+    searchController.clear();   // clears the TextField
+
     searchQuery.value = '';
     _updateFilteredLists();
   }
@@ -214,6 +219,7 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     );
   }
 
+  // Updated API implementation for user update
   Future<void> updateUser() async {
     // Validation
     if (nameController.text.trim().isEmpty) {
@@ -232,39 +238,43 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
       return;
     }
 
-    if (passwordController.text.isNotEmpty && passwordController.text.length < 6) {
-      _showErrorSnackbar('Password must be at least 6 characters');
+    if (passwordController.text.isNotEmpty && passwordController.text.length < 2) {
+      _showErrorSnackbar('Password must be at least 2 characters');
       return;
     }
 
     try {
-      // Show loading
+      // Show loading with custom indicator
       Get.dialog(
-        const Center(
-          child: CircularProgressIndicator(),
-        ),
+        LoadingIndicator(),
         barrierDismissible: false,
       );
 
       final apiConfig = await ApiConfig.load();
-      final response = await http.put(
-        Uri.parse('${apiConfig.baseUrl}update-user'), // Replace with your actual endpoint
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'empId': currentEditingUser?.empId,
-          'name': nameController.text.trim(),
-          'username': usernameController.text.trim(),
-          if (passwordController.text.isNotEmpty) 'password': passwordController.text,
-        }),
+      final userId = await ApiConfig.getLoginData();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}user_update'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userid': userId?.response?.empId.toString() ?? '',
+          'empid': currentEditingUser?.empId?.toString() ?? '',
+          'empcode': usernameController.text.trim(),
+          'pwd': passwordController.text.isNotEmpty ? passwordController.text : '',
+        },
       );
 
       // Close loading dialog
       Get.back();
 
       if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
         Get.back(); // Close edit dialog
-        _showSuccessSnackbar('User updated successfully');
+        _showSuccessSnackbar(responseData['message'] ?? 'User updated successfully');
         await fetchUserLists();
+      } else if (response.statusCode == 401) {
+        final responseData = jsonDecode(response.body);
+        _showErrorSnackbar(responseData['message'] ?? 'Unauthorized access');
       } else {
         _showErrorSnackbar('Failed to update user: ${response.statusCode}');
       }
@@ -274,46 +284,61 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     }
   }
 
+  // Updated API implementation for assign roles
   Future<void> assignRoles() async {
     try {
-      // Show loading
+      // Show loading with custom indicator
       Get.dialog(
-        const Center(
-          child: CircularProgressIndicator(),
-        ),
+        LoadingIndicator(),
         barrierDismissible: false,
       );
 
       final apiConfig = await ApiConfig.load();
-      final response = await http.put(
-        Uri.parse('${apiConfig.baseUrl}assign-roles'), // Replace with your actual endpoint
+      final userId = await ApiConfig.getLoginData();
+
+      // Helper function to convert boolean to int (like your Java get_chkCb_status method)
+      int getCheckboxStatus(bool isChecked) {
+        return isChecked ? 1 : 0;
+      }
+
+      // Create request body following your Java format
+      final requestBody = {
+        'userid': userId?.response?.empId?.toString() ?? '',
+        'useas': '5',
+        'empdetails': {
+          'empid': currentEditingUser?.empId?.toString() ?? '',
+          'admin': getCheckboxStatus(selectedRoles['Admin'] ?? false),
+          'picker': getCheckboxStatus(selectedRoles['Picker'] ?? false),
+          'checker': getCheckboxStatus(selectedRoles['Checker'] ?? false),
+          'solver': getCheckboxStatus(selectedRoles['Solver'] ?? false),
+          'tray': getCheckboxStatus(selectedRoles['Tray'] ?? false),
+          'pickman': getCheckboxStatus(selectedRoles['Picker Manager'] ?? false),
+          'packer': getCheckboxStatus(selectedRoles['Packer'] ?? false),
+          'traypick': getCheckboxStatus(selectedRoles['Tray Assigner'] ?? false),
+          'companyid': LoginController.selectedCompanyId, // You may need to get this dynamically
+          'brchid': LoginController.selectedBranchId, // You may need to get this dynamically
+        },
+      };
+
+      print('Assign Roles Request Body: ${jsonEncode(requestBody)}'); // Debug log
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}saveuserrole'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'empId': currentEditingUser?.empId,
-          'roles': {
-            'admin': selectedRoles['Admin'],
-            'doctor': selectedRoles['Doctor'],
-            'nurse': selectedRoles['Nurse'],
-            'receptionist': selectedRoles['Receptionist'],
-            'manager': selectedRoles['Manager'],
-            'tray': selectedRoles['Tray'],
-            'trayPick': selectedRoles['Tray Assigner'],
-            'picker': selectedRoles['Picker'],
-            'pickMan': selectedRoles['Picker Manager'],
-            'checker': selectedRoles['Checker'],
-            'packer': selectedRoles['Packer'],
-            'solver': selectedRoles['Solver'],
-          },
-        }),
+        body: jsonEncode(requestBody),
       );
 
       // Close loading dialog
       Get.back();
 
       if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
         Get.back(); // Close role assignment dialog
-        _showSuccessSnackbar('Roles assigned successfully');
+        _showSuccessSnackbar(responseData['message'] ?? 'Roles assigned successfully');
         await fetchUserLists();
+      } else if (response.statusCode == 401) {
+        final responseData = jsonDecode(response.body);
+        _showErrorSnackbar(responseData['message'] ?? 'Unauthorized access');
       } else {
         _showErrorSnackbar('Failed to assign roles: ${response.statusCode}');
       }
@@ -404,8 +429,8 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     }
 
     if (passwordController.text.isNotEmpty) {
-      if (passwordController.text.length < 6) {
-        _showErrorSnackbar('Password must be at least 6 characters long');
+      if (passwordController.text.length < 2) {
+        _showErrorSnackbar('Password must be at least 2 characters long');
         return false;
       }
 
@@ -450,3 +475,4 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     super.onClose();
   }
 }
+

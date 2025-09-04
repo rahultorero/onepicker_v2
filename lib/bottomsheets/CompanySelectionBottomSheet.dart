@@ -45,7 +45,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
                   padding: EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+                      colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
                     ),
                     shape: BoxShape.circle,
                   ),
@@ -65,7 +65,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryBlue,
+                          color: AppTheme.primaryTeal,
                         ),
                       ),
                       Text(
@@ -140,10 +140,10 @@ class CompanySelectionBottomSheet extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.lightBlue.withOpacity(0.05),
+        color: AppTheme.lightTeal.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.1),
+          color: AppTheme.primaryTeal.withOpacity(0.1),
         ),
       ),
       child: Column(
@@ -153,7 +153,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
             children: [
               Icon(
                 icon,
-                color: AppTheme.primaryBlue,
+                color: AppTheme.primaryTeal,
                 size: 20,
               ),
               SizedBox(width: 8),
@@ -162,7 +162,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.primaryBlue,
+                  color: AppTheme.primaryTeal,
                 ),
               ),
             ],
@@ -189,7 +189,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.3),
+          color: AppTheme.primaryTeal.withOpacity(0.3),
         ),
       ),
       child: DropdownButtonHideUnderline(
@@ -220,7 +220,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
           },
           icon: Icon(
             Icons.arrow_drop_down,
-            color: AppTheme.primaryBlue,
+            color: AppTheme.primaryTeal,
           ),
         ),
       ),
@@ -246,7 +246,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.3),
+          color: AppTheme.primaryTeal.withOpacity(0.3),
         ),
       ),
       child: DropdownButtonHideUnderline(
@@ -277,7 +277,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
           },
           icon: Icon(
             Icons.arrow_drop_down,
-            color: AppTheme.primaryBlue,
+            color: AppTheme.primaryTeal,
           ),
         ),
       ),
@@ -303,7 +303,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.3),
+          color: AppTheme.primaryTeal.withOpacity(0.3),
         ),
       ),
       child: DropdownButtonHideUnderline(
@@ -334,7 +334,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
           },
           icon: Icon(
             Icons.arrow_drop_down,
-            color: AppTheme.primaryBlue,
+            color: AppTheme.primaryTeal,
           ),
         ),
       ),
@@ -348,7 +348,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.3),
+          color: AppTheme.primaryTeal.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -358,7 +358,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
             height: 16,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: AppTheme.primaryBlue,
+              color: AppTheme.primaryTeal,
             ),
           ),
           SizedBox(width: 12),
@@ -409,7 +409,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: AppTheme.primaryBlue.withOpacity(0.3),
+          color: AppTheme.primaryTeal.withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -445,7 +445,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: canProceed
             ? LinearGradient(
-          colors: [AppTheme.primaryBlue, AppTheme.medicalTeal],
+          colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
         )
             : LinearGradient(
           colors: [Colors.grey.shade300, Colors.grey.shade400],
@@ -453,7 +453,7 @@ class CompanySelectionBottomSheet extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: canProceed ? [
           BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.3),
+            color: AppTheme.primaryTeal.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:onepicker/view/PPCDashboardScreen.dart';
+import 'package:onepicker/view/StatusDashboardScreen.dart';
 import 'dart:math' as math;
 
 import '../controllers/MainScreenController.dart';
@@ -27,9 +28,9 @@ class MainScreen extends StatelessWidget {
                 center: Alignment.topRight,
                 radius: 1.2,
                 colors: [
-                  AppTheme.lightBlue.withOpacity(0.2),
+                  AppTheme.lightTeal.withOpacity(0.2),
                   AppTheme.background,
-                  AppTheme.primaryBlue.withOpacity(0.03),
+                  AppTheme.primaryTeal.withOpacity(0.03),
                 ],
               ),
             ),
@@ -47,7 +48,7 @@ class MainScreen extends StatelessWidget {
                   children: [
                     const HomeScreen(),
                     PPCDashboardScreen(),
-                    const DevicesScreen(),
+                    StatusDashboardScreen(),
                     const ProfileScreen(),
                   ],
                 )),
@@ -112,7 +113,7 @@ class MainScreen extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryBlue.withOpacity(0.1) : Colors.transparent,
+                color: isSelected ? AppTheme.primaryTeal.withOpacity(0.1) : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -120,7 +121,7 @@ class MainScreen extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    color: isSelected ? AppTheme.primaryBlue : AppTheme.onSurface.withOpacity(0.6),
+                    color: isSelected ? AppTheme.primaryTeal : AppTheme.onSurface.withOpacity(0.6),
                     size: 24,
                   ),
                   if (isSelected) ...[
@@ -128,7 +129,7 @@ class MainScreen extends StatelessWidget {
                     Text(
                       title,
                       style: TextStyle(
-                        color: AppTheme.primaryBlue,
+                        color: AppTheme.primaryTeal,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),

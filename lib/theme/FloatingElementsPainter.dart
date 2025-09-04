@@ -21,9 +21,9 @@ class FloatingElementsPainter extends CustomPainter {
           math.sin(animationValue * 2 + i) * 20;
 
       paint.color = [
-        AppTheme.primaryBlue.withOpacity(0.05),
-        AppTheme.medicalTeal.withOpacity(0.08),
-        AppTheme.mintGreen.withOpacity(0.06),
+        AppTheme.primaryTeal.withOpacity(0.05),
+        AppTheme.lightTeal.withOpacity(0.08),
+        AppTheme.accentGreen.withOpacity(0.06),
       ][i % 3];
 
       final radius = 15.0 + math.cos(animationValue + i * 0.5) * 8;

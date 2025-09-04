@@ -20,10 +20,7 @@ class PickerScreen extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Color(0xFF06B6D4), // Cyan
-                Color(0xFF2563EB), // Deep Blue
-              ],
+              colors: AppTheme.primaryGradient,
             ),
             boxShadow: [
               BoxShadow(
@@ -70,9 +67,9 @@ class PickerScreen extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'Picker Dashboard',
+                              'Picker',
                               style: TextStyle(
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w800,
                                 color: Colors.white,
                                 letterSpacing: -0.5,

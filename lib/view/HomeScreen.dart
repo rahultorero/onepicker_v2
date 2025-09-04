@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
-                color: AppTheme.primaryBlue,
+                color: AppTheme.primaryTeal,
                 letterSpacing: 0.5,
               ),
             )),
@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
             //       ),
             //       child: Icon(
             //         Icons.notifications_outlined,
-            //         color: AppTheme.primaryBlue,
+            //         color: AppTheme.primaryTeal,
             //         size: 20,
             //       ),
             //     ),
@@ -183,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryBlue.withOpacity(0.25),
+                    color: AppTheme.primaryTeal.withOpacity(0.25),
                     blurRadius: 8,
                     spreadRadius: 1,
                   ),
@@ -214,7 +214,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryBlue.withOpacity(0.25),
+            color: AppTheme.primaryTeal.withOpacity(0.25),
             blurRadius: 12,
             spreadRadius: 0,
             offset: const Offset(0, 4),
