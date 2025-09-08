@@ -268,10 +268,7 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
   }
 
   // NEW METHOD: API call to fetch stock detail for a specific item
-  Future<void> fetchStockDetail({
-    required int itemDetailId,
-    required String itemName,
-  }) async {
+  Future<void> fetchStockDetail(int itemDetailId, String itemName,bool show) async {
     try {
       isLoadingStockDetail(true);
       stockDetailList.clear();
@@ -312,7 +309,10 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
           print("📊 Stock detail fetched. Count=${stockDetailList.length}");
 
           // Show the stock detail dialog
-          showStockDetailDialog(itemName);
+          if(show){
+            showStockDetailDialog(itemName);
+
+          }
 
         } else {
           print("❌ API returned error: ${stockDetailModel.message}");
@@ -345,6 +345,7 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
       isLoadingStockDetail(false);
     }
   }
+
 
   void showStockDetailDialog(String itemName) {
     Get.dialog(
@@ -811,7 +812,7 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
 
   // NEW METHOD: Method to be called from UI to show stock detail
   void showItemStockDetail(int itemDetailId, String itemName) {
-    fetchStockDetail(itemDetailId: itemDetailId, itemName: itemName);
+    fetchStockDetail(itemDetailId, itemName,false);
   }
 
   // API call to fetch picker details

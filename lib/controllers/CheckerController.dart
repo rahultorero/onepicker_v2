@@ -11,8 +11,10 @@ import '../model/PickerDataModel.dart';
 import '../model/PickerListDetailModel.dart';
 import '../services/services.dart';
 import '../theme/AppTheme.dart';
+import '../view/PickerListTab.dart';
 import 'HomeScreenController.dart';
 import 'LoginController.dart';
+import 'PickerController.dart';
 
 class CheckerController extends GetxController {
   // Observables
@@ -203,120 +205,197 @@ class CheckerController extends GetxController {
     }
   }
 
+
   // API call to submit checked items
   Future<void> submitCheckedItems(PickerData pickerData, List<PickerMenuDetail> checkedItems) async {
-    if (checkedItems.isEmpty) {
-      Get.snackbar(
-        'Warning',
-        'No items selected for submission',
-        backgroundColor: Colors.orange.withOpacity(0.1),
-        colorText: Colors.orange.shade700,
-      );
-      return;
-    }
-
-    try {
-      isSubmittingData(true);
-      final apiConfig = await ApiConfig.load();
-      final loginData = await ApiConfig.getLoginData();
-
-      // Construct JSON payload similar to the reference code
-      final Map<String, dynamic> jsonBody = {
-        "companyId": LoginController.selectedCompanyId.toString(),
-        "useas": "2",
-        "siid": pickerData.sIId.toString(),
-        "brchid": LoginController.selectedBranchId.toString(),
-        "empid": loginData?.response?.empId.toString(),
-        "settingPCamera": HomeScreenController.selectCamera ?? "", // Camera setting
-        "brk": LoginController.selectedFloorId.toString(),
-        "istempquit": 1,
-        "appversion": "V1",
-      };
-
-      // Build item details array
-      List<Map<String, dynamic>> itemDetailsArray = [];
-      for (var item in checkedItems) {
-        Map<String, dynamic> itemDetail = {
-          "siid": pickerData.sIId.toString(),
-          "itemdetailid": item.itemDetailId?.toString() ?? "",
-          "batchno": item.batchNo ?? "",
-          "mrp": item.mrp?.toString() ?? "",
-        };
-        itemDetailsArray.add(itemDetail);
+         if (checkedItems.isEmpty) {
+        Get.snackbar(
+          'Warning',
+          'No items selected for submission',
+          backgroundColor: Colors.orange.withOpacity(0.1),
+          colorText: Colors.orange.shade700,
+        );
+        return;
       }
 
-      jsonBody["itemdetails"] = itemDetailsArray;
+      try {
+        isSubmittingData(true);
+        final apiConfig = await ApiConfig.load();
+        final loginData = await ApiConfig.getLoginData();
 
-      print("🚀 Submit payload: ${json.encode(jsonBody)}");
+        // Construct JSON payload similar to the reference code
+        final Map<String, dynamic> jsonBody = {
+          "companyId": LoginController.selectedCompanyId.toString(),
+          "useas": "2",
+          "siid": pickerData.sIId.toString(),
+          "brchid": LoginController.selectedBranchId.toString(),
+          "empid": loginData?.response?.empId.toString(),
+          "settingPCamera": HomeScreenController.selectCamera ?? "", // Camera setting
+          "brk": LoginController.selectedFloorId.toString(),
+          "istempquit": 1,
+          "appversion": "V1",
+        };
 
-      final response = await http.post(
-        Uri.parse('${apiConfig.baseUrl}saveproduct'),
-        headers: {
-          'Content-Type': 'application/json; charset=utf-8',
-        },
-        body: json.encode(jsonBody),
-      );
+        // Build item details array
+        List<Map<String, dynamic>> itemDetailsArray = [];
+        for (var item in checkedItems) {
+          Map<String, dynamic> itemDetail = {
+            "siid": pickerData.sIId.toString(),
+            "itemdetailid": item.itemDetailId?.toString() ?? "",
+            "batchno": item.batchNo ?? "",
+            "mrp": item.mrp?.toString() ?? "",
+          };
+          itemDetailsArray.add(itemDetail);
+        }
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
+        jsonBody["itemdetails"] = itemDetailsArray;
 
-        if (responseData['status'] == '200') {
-          // Success - show success message and navigate back
-          Get.snackbar(
-            'Success',
-            responseData['message'] ?? 'Items submitted successfully!',
-            backgroundColor: Colors.green.withOpacity(0.85),
-            colorText: Colors.white, // 👈 more contrast
-            duration: const Duration(seconds: 3),
-            snackPosition: SnackPosition.BOTTOM,
-            margin: const EdgeInsets.all(12),
-            borderRadius: 8,
-          );
+        print("🚀 Submit payload: ${json.encode(jsonBody)}");
+
+        final response = await http.post(
+          Uri.parse('${apiConfig.baseUrl}saveproduct'),
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+          },
+          body: json.encode(jsonBody),
+        );
+
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+
+          if (responseData['status'] == '200') {
+            // Success - show success message and navigate back
+            Get.snackbar(
+              'Success',
+              responseData['message'] ?? 'Items submitted successfully!',
+              backgroundColor: Colors.green.withOpacity(0.85),
+              colorText: Colors.white, // 👈 more contrast
+              duration: const Duration(seconds: 3),
+              snackPosition: SnackPosition.BOTTOM,
+              margin: const EdgeInsets.all(12),
+              borderRadius: 8,
+            );
 
 
-          // Navigate back to previous screen after short delay
-          Future.delayed(const Duration(milliseconds: 500), () {
-            Get.back();
-            // Refresh the packer list to reflect updated status
-            refreshData();
-          });
+            // Navigate back to previous screen after short delay
+            Future.delayed(const Duration(milliseconds: 500), () {
+              Get.back();
+              // Refresh the packer list to reflect updated status
+              refreshData();
+            });
 
-        } else if (responseData['status'] == '401') {
-          // Authentication error
-          Get.snackbar(
-            'Error',
-            'Authentication failed. Please login again.',
-            backgroundColor: Colors.red.withOpacity(0.1),
-            colorText: Colors.red,
-          );
+          } else if (responseData['status'] == '401') {
+            // Authentication error
+            Get.snackbar(
+              'Error',
+              'Authentication failed. Please login again.',
+              backgroundColor: Colors.red.withOpacity(0.1),
+              colorText: Colors.red,
+            );
+          } else {
+            // Other error status
+            Get.snackbar(
+              'Error',
+              responseData['message'] ?? 'Failed to submit items',
+              backgroundColor: Colors.red.withOpacity(0.1),
+              colorText: Colors.red,
+            );
+          }
         } else {
-          // Other error status
           Get.snackbar(
             'Error',
-            responseData['message'] ?? 'Failed to submit items',
+            'Server error. Please try again later.',
             backgroundColor: Colors.red.withOpacity(0.1),
             colorText: Colors.red,
           );
         }
-      } else {
+      } catch (e) {
+        print("❌ Submit error: $e");
         Get.snackbar(
           'Error',
-          'Server error. Please try again later.',
+          'Failed to submit items. Please check your internet connection.',
           backgroundColor: Colors.red.withOpacity(0.1),
           colorText: Colors.red,
+          duration: const Duration(seconds: 3),
         );
+      } finally {
+        isSubmittingData(false);
+      }
+
+
+
+  }
+
+
+  Future<void> assignTray({
+    required int siId,
+    required String trayNumbers,
+    required int trayCount,
+  }) async {
+    try {
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+
+      final requestBody = {
+        'companyId': LoginController.selectedCompanyId.toString(),
+        'useas': '1',
+        'siid': siId.toString(),
+        'trayno': trayNumbers,
+        'tcount': trayCount.toString(),
+        'brchid': LoginController.selectedBranchId.toString(),
+        'empid': loginData?.response?.empId.toString() ?? '',
+        'brk': LoginController.selectedFloorId.toString(),
+        'appversion': 'V1',
+      };
+
+      print("📤 Assign Tray API Request URL: ${apiConfig.baseUrl}assign_tray");
+      print("📤 Request Body: $requestBody");
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}assign_tray'),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: requestBody,
+      );
+
+      print("📥 Assign Tray Response status: ${response.statusCode}");
+      print("📥 Assign Tray Response body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+
+        // Assuming the API returns a ResetUserModel or similar response
+        if (jsonData['status'] == '200' || jsonData['success'] == true) {
+          print("✅ Tray assigned successfully");
+
+          // Update the specific picker item in the list
+          final pickerIndex = packerList.indexWhere((picker) => picker.sIId == siId);
+          if (pickerIndex != -1) {
+            // Create updated picker data with new tray numbers
+            final updatedPicker = PickerData(
+              sIId: packerList[pickerIndex].sIId,
+              invNo: packerList[pickerIndex].invNo,
+              trayNo: trayNumbers, // Updated tray numbers
+              iTime: packerList[pickerIndex].iTime,
+              delType: packerList[pickerIndex].delType,
+              // Add other fields as needed
+            );
+
+            // Replace the item in the list
+            packerList[pickerIndex] = updatedPicker;
+            packerList.refresh(); // Trigger UI update
+          }
+
+        } else {
+          throw Exception(jsonData['message'] ?? 'Failed to assign tray');
+        }
+      } else {
+        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
-      print("❌ Submit error: $e");
-      Get.snackbar(
-        'Error',
-        'Failed to submit items. Please check your internet connection.',
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red,
-        duration: const Duration(seconds: 3),
-      );
-    } finally {
-      isSubmittingData(false);
+      print('🔥 Error assigning tray: $e');
+      throw Exception('Failed to assign tray: $e');
     }
   }
 

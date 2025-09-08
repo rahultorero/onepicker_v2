@@ -539,7 +539,7 @@ class MergerController extends GetxController {
             backgroundColor: Colors.green.shade700, // darker green background
             colorText: Colors.white, // white text for contrast
             icon: const Icon(Icons.check_circle, color: Colors.white), // white icon
-            duration: const Duration(seconds: 2),
+            duration: const Duration(milliseconds: 500),
             snackPosition: SnackPosition.BOTTOM, // optional: bottom placement
             margin: const EdgeInsets.all(12), // optional: add spacing
             borderRadius: 8, // optional: rounded snackbar

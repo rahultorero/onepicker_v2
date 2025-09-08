@@ -6,6 +6,7 @@ import 'package:onepicker/widget/AppLoader.dart';
 import '../controllers/PickerManagerController.dart';
 import '../model/PickerDataModel.dart';
 import '../model/PickerMenuDetailModel.dart';
+import '../model/StockDetailDataModel.dart';
 import '../theme/AppTheme.dart';
 
 class PickerManager extends StatelessWidget {
@@ -315,6 +316,8 @@ class PickerManager extends StatelessWidget {
                                           onSelectionChanged: controller.onDetailSelectionChanged,
                                           isSelected: controller.selectedDetailIds.contains(detail.itemDetailId.toString()),
                                           onTap: controller.showItemStockDetail,
+                                          onFetchStockDetail: controller.fetchStockDetail,
+                                          stockDetailList: controller.stockDetailList,
                                         ));
                                       },
                                     ),
@@ -578,7 +581,11 @@ class _CompactPickerCardState extends State<CompactPickerCard>
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [_getBackgroundColor().withOpacity(0.05), _getBackgroundColor().withOpacity(0.15)],
+          ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: widget.isSelected
@@ -700,14 +707,17 @@ class _CompactPickerCardState extends State<CompactPickerCard>
   }
 }
 
-class CompactDetailCard extends StatelessWidget {
+class CompactDetailCard extends StatefulWidget {
   final PickerMenuDetail detail;
   final int index;
   final Function(String detailId, bool isSelected) onSelectionChanged;
   final bool isSelected;
-  bool get isDisabled => detail.pLedId == 0;
   final Function(int itemDetailId, String itemName)? onTap;
+  final Function(PickerMenuDetail detail)? onRemarkSubmitted;
+  final Function(int itemDetailId, String itemName, bool show)? onFetchStockDetail;
+  final List<StockDetailData> stockDetailList;
 
+  bool get isDisabled => detail.pLedId == 0;
 
   const CompactDetailCard({
     Key? key,
@@ -715,34 +725,41 @@ class CompactDetailCard extends StatelessWidget {
     required this.index,
     required this.onSelectionChanged,
     required this.isSelected,
-    required this.onTap
+    required this.onTap,
+    this.onRemarkSubmitted,
+    this.onFetchStockDetail,
+    required this.stockDetailList,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
+  State<CompactDetailCard> createState() => _CompactDetailCardState();
+}
 
+class _CompactDetailCardState extends State<CompactDetailCard> {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isDisabled
+        color: widget.isDisabled
             ? Colors.blueGrey.withOpacity(0.2)
-            : (isSelected
+            : (widget.isSelected
             ? AppTheme.primaryTeal.withOpacity(0.01)
             : AppTheme.surface),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected
+          color: widget.isSelected
               ? AppTheme.primaryTeal
               : AppTheme.primaryTeal.withOpacity(0.05),
-          width: isSelected ? 2 : 1,
+          width: widget.isSelected ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: isSelected
+            color: widget.isSelected
                 ? AppTheme.primaryTeal.withOpacity(0.05)
                 : AppTheme.shadowColor.withOpacity(0.04),
-            blurRadius: isSelected ? 8 : 4,
-            spreadRadius: isSelected ? 1 : 0,
+            blurRadius: widget.isSelected ? 8 : 4,
+            spreadRadius: widget.isSelected ? 1 : 0,
             offset: const Offset(0, 2),
           ),
         ],
@@ -752,9 +769,19 @@ class CompactDetailCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
-          onTap: isDisabled
+          onTap: widget.isDisabled
               ? null
-              : () => onSelectionChanged(detail.itemDetailId.toString(), !isSelected),
+              : () {
+            // If item is being unselected and has a remark, clear the remark
+            if (widget.isSelected && (widget.detail.pNote != null &&
+                widget.detail.pNote!.isNotEmpty)) {
+              setState(() {
+                widget.detail.pNote = '';
+              });
+            }
+            widget.onSelectionChanged(
+                widget.detail.itemDetailId.toString(), !widget.isSelected);
+          },
           splashColor: AppTheme.primaryTeal.withOpacity(0.1),
           highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
           child: Padding(
@@ -763,13 +790,13 @@ class CompactDetailCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Location Header with Info Icon
-                // 🔹 Header with gradient highlight (like your screenshot)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 6),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: AppTheme.chartGradient, // adjust to match your design
+                      colors: AppTheme.chartGradient,
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -788,7 +815,8 @@ class CompactDetailCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          '${detail.loca ?? 'N/A'}-${detail.locn ?? 'N/A'}',
+                          '${widget.detail.loca ?? 'N/A'}-${widget.detail
+                              .locn ?? 'N/A'}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Colors.white,
@@ -797,14 +825,17 @@ class CompactDetailCard extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () => _showItemInfo(context),
-                        child: const Icon(
-                          Icons.info_outline,
-                          size: 16,
-                          color: Colors.white,
+                      // Show info icon - opens review dialog
+                      if (widget.detail.pNote == null ||
+                          widget.detail.pNote!.isEmpty)
+                        GestureDetector(
+                          onTap: () => _showReviewDialog(context),
+                          child: const Icon(
+                            Icons.info_outline,
+                            size: 16,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
@@ -821,14 +852,15 @@ class CompactDetailCard extends StatelessWidget {
                       width: 20,
                       height: 20,
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryTeal : Colors.transparent,
+                        color: widget.isSelected ? AppTheme.primaryTeal : Colors
+                            .transparent,
                         border: Border.all(
                           color: AppTheme.primaryTeal,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(4),
                       ),
-                      child: isSelected
+                      child: widget.isSelected
                           ? const Icon(
                         Icons.check,
                         size: 16,
@@ -843,7 +875,7 @@ class CompactDetailCard extends StatelessWidget {
                         children: [
                           GestureDetector(
                             child: Text(
-                              detail.itemName ?? 'Unknown Item',
+                              widget.detail.itemName ?? 'Unknown Item',
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -852,14 +884,14 @@ class CompactDetailCard extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
-                              onTap: () => onTap?.call(
-                                  detail.itemDetailId ?? 0,
-                                  detail.itemName ?? 'Unknown Item'
-                              ),
+                            onTap: () =>
+                                widget.onTap?.call(
+                                    widget.detail.itemDetailId ?? 0,
+                                    widget.detail.itemName ?? 'Unknown Item'),
                           ),
-                          if (detail.packing != null)
+                          if (widget.detail.packing != null)
                             Text(
-                              detail.packing!,
+                              widget.detail.packing!,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: AppTheme.onSurface.withOpacity(0.7),
@@ -871,13 +903,14 @@ class CompactDetailCard extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppTheme.amberGold,
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        '${detail.tQty ?? 0}',
+                        '${widget.detail.tQty ?? 0}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -895,7 +928,7 @@ class CompactDetailCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildCompactInfo(
-                        detail.dNick ?? 'N/A',
+                        widget.detail.dNick ?? 'N/A',
                         Icons.factory,
                         AppTheme.lightTeal,
                       ),
@@ -903,7 +936,7 @@ class CompactDetailCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildCompactInfo(
-                        detail.batchNo ?? 'N/A',
+                        widget.detail.batchNo ?? 'N/A',
                         Icons.batch_prediction,
                         AppTheme.lavender,
                       ),
@@ -917,7 +950,7 @@ class CompactDetailCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildCompactInfo(
-                        detail.sExpDate ?? 'N/A',
+                        widget.detail.sExpDate ?? 'N/A',
                         Icons.schedule,
                         AppTheme.amberGold,
                       ),
@@ -925,7 +958,8 @@ class CompactDetailCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildCompactInfo(
-                        detail.mrp != null ? '₹${detail.mrp!.toStringAsFixed(2)}' : 'N/A',
+                        widget.detail.mrp != null ? '₹${widget.detail.mrp!
+                            .toStringAsFixed(2)}' : 'N/A',
                         Icons.currency_rupee,
                         AppTheme.accentGreen,
                       ),
@@ -940,7 +974,8 @@ class CompactDetailCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _buildCompactInfo(
-                        'C: ${detail.caseQ?.toString().replaceAll('.0', '') ?? '0'}',
+                        'C: ${widget.detail.caseQ?.toString().replaceAll(
+                            '.0', '') ?? '0'}',
                         Icons.inventory,
                         AppTheme.primaryTeal,
                       ),
@@ -948,13 +983,66 @@ class CompactDetailCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Expanded(
                       child: _buildCompactInfo(
-                        'L: ${detail.caseL?.toString().replaceAll('.0', '') ?? '0'}',
+                        'L: ${widget.detail.caseL?.toString().replaceAll(
+                            '.0', '') ?? '0'}',
                         Icons.inventory_2,
                         AppTheme.lightTeal,
                       ),
                     ),
                   ],
                 ),
+
+                // Remark Section - Only show if pNote is not empty
+                if (widget.detail.pNote != null &&
+                    widget.detail.pNote!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryTeal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppTheme.primaryTeal.withOpacity(0.3),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.note_alt,
+                              size: 14,
+                              color: AppTheme.primaryTeal,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Remark',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.primaryTeal,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.detail.pNote!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -963,39 +1051,809 @@ class CompactDetailCard extends StatelessWidget {
     );
   }
 
-  void _showItemInfo(BuildContext context) {
+  void _showReviewDialog(BuildContext context) async {
+    String? selectedReason;
+    String? selectedBatch;
+    TextEditingController reviewController = TextEditingController();
+    bool showBatchList = false;
+    bool showReviewField = false;
+    String reviewHint = '';
+    bool isLoading = false;
+    List<String> batchNumbers = [];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Item Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 12,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery
+                      .of(context)
+                      .size
+                      .height * 0.85,
+                  maxWidth: MediaQuery
+                      .of(context)
+                      .size
+                      .width * 0.9,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header section
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: AppTheme.chartGradient,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryTeal.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              Icons.assignment_outlined,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Item Review',
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Select appropriate review reason',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.of(context).pop(),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Item Details Card
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.primaryTeal.withOpacity(0.05),
+                                    AppTheme.lightTeal.withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppTheme.primaryTeal.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryTeal.withOpacity(
+                                        0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryTeal
+                                              .withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(
+                                              8),
+                                        ),
+                                        child: Icon(
+                                          Icons.inventory_2,
+                                          color: AppTheme.primaryTeal,
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          'Item Information',
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: AppTheme.onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    '${widget.detail.itemName ??
+                                        'Unknown Item'} ${widget.detail
+                                        .packing ?? ''}',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'B: ${widget.detail.batchNo ?? 'N/A'}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.onSurface.withOpacity(
+                                          0.8),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'E: ${widget.detail.sExpDate ?? 'N/A'}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.onSurface.withOpacity(
+                                          0.8),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'M: ${widget.detail.mrp != null
+                                        ? '₹${widget.detail.mrp!
+                                        .toStringAsFixed(2)}'
+                                        : 'N/A'}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.onSurface.withOpacity(
+                                          0.8),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Review Options Section
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryTeal.withOpacity(
+                                        0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.rate_review,
+                                    color: AppTheme.primaryTeal,
+                                    size: 16,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Select Review Reason',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // Radio Button Options
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppTheme.primaryTeal.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildRadioOption(
+                                    'Batch change',
+                                    'batch_change',
+                                    Icons.swap_horiz,
+                                    selectedReason,
+                                        (value) async {
+                                      setState(() {
+                                        selectedReason = value;
+                                        showBatchList = true;
+                                        showReviewField = true;
+                                        reviewHint = 'Enter Batch No';
+                                        isLoading = true;
+                                      });
+
+                                      // Call the API to fetch stock details
+                                      if (widget.onFetchStockDetail != null) {
+                                        await widget.onFetchStockDetail!(
+                                          widget.detail.itemDetailId ?? 0,
+                                          widget.detail.itemName ?? '',
+                                          false,
+                                        );
+
+                                        setState(() {
+                                          batchNumbers = widget.stockDetailList
+                                              .map((stock) => "${stock
+                                              ?.batchNo} / ₹${stock?.mrp}")
+                                              .toList();
+                                          isLoading = false;
+                                        });
+                                      } else {
+                                        setState(() {
+                                          isLoading = false;
+                                        });
+                                      }
+                                    },
+                                  ),
+
+                                  if (showBatchList &&
+                                      selectedReason == 'batch_change')
+                                    isLoading
+                                        ? Container(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Column(
+                                        children: [
+                                          CircularProgressIndicator(
+                                            color: AppTheme.primaryTeal,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Loading batch data...',
+                                            style: TextStyle(
+                                              color: AppTheme.onSurface
+                                                  .withOpacity(0.6),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                        : _buildBatchList(
+                                        batchNumbers,
+                                        selectedBatch,
+                                        setState,
+                                        reviewController,
+                                            (value) =>
+                                            setState(() =>
+                                            selectedBatch = value)),
+
+                                  _buildDivider(),
+
+                                  _buildRadioOption(
+                                    'Short quantity supplied',
+                                    'short_qty',
+                                    Icons.remove_circle_outline,
+                                    selectedReason,
+                                        (value) {
+                                      setState(() {
+                                        selectedReason = value;
+                                        showBatchList = false;
+                                        showReviewField = true;
+                                        reviewHint = 'Enter Short Quantity';
+                                        reviewController.clear();
+                                      });
+                                    },
+                                  ),
+
+                                  _buildDivider(),
+
+                                  _buildRadioOption(
+                                    'Not available',
+                                    'not_available',
+                                    Icons.cancel_outlined,
+                                    selectedReason,
+                                        (value) {
+                                      setState(() {
+                                        selectedReason = value;
+                                        showBatchList = false;
+                                        showReviewField = false;
+                                        reviewController.clear();
+                                      });
+                                    },
+                                  ),
+
+                                  _buildDivider(),
+
+                                  _buildRadioOption(
+                                    'Damage product',
+                                    'damage_product',
+                                    Icons.broken_image_outlined,
+                                    selectedReason,
+                                        (value) {
+                                      setState(() {
+                                        selectedReason = value;
+                                        showBatchList = false;
+                                        showReviewField = true;
+                                        reviewHint =
+                                        'Enter Damage / Breakage Qty';
+                                        reviewController.clear();
+                                      });
+                                    },
+                                  ),
+
+                                  _buildDivider(),
+
+                                  _buildRadioOption(
+                                    'Supplied multiple batch and quantity',
+                                    'multiple',
+                                    Icons.dynamic_feed,
+                                    selectedReason,
+                                        (value) {
+                                      setState(() {
+                                        selectedReason = value;
+                                        showBatchList = false;
+                                        showReviewField = true;
+                                        reviewHint =
+                                        'Enter Batch and Quantity.\nFormat: batch no - qty, batch no - qty';
+                                        reviewController.clear();
+                                      });
+                                    },
+                                  ),
+
+                                  _buildDivider(),
+
+                                  _buildRadioOption(
+                                    'None',
+                                    'none',
+                                    Icons.check_circle_outline,
+                                    selectedReason,
+                                        (value) {
+                                      setState(() {
+                                        selectedReason = value;
+                                        showBatchList = false;
+                                        showReviewField = false;
+                                        reviewController.clear();
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Review Text Field
+                            if (showReviewField) ...[
+                              const SizedBox(height: 20),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: AppTheme.surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppTheme.primaryTeal.withOpacity(
+                                        0.3),
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: reviewController,
+                                  decoration: InputDecoration(
+                                    hintText: reviewHint,
+                                    hintStyle: TextStyle(
+                                      color: AppTheme.onSurface.withOpacity(
+                                          0.6),
+                                      fontSize: 14,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    filled: true,
+                                    fillColor: AppTheme.primaryTeal.withOpacity(
+                                        0.05),
+                                    contentPadding: const EdgeInsets.all(16),
+                                    prefixIcon: Icon(
+                                      Icons.edit_note,
+                                      color: AppTheme.primaryTeal,
+                                    ),
+                                  ),
+                                  maxLines: selectedReason == 'multiple'
+                                      ? 3
+                                      : 1,
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Action Buttons
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface.withOpacity(0.5),
+                        borderRadius: const BorderRadius.only(
+                          bottomLeft: Radius.circular(20),
+                          bottomRight: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                    color: AppTheme.primaryTeal.withOpacity(
+                                        0.5)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                              ),
+                              child: Text(
+                                'Cancel',
+                                style: TextStyle(
+                                  color: AppTheme.onSurface.withOpacity(0.8),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton(
+                              onPressed: () =>
+                                  _submitReview(
+                                    context,
+                                    selectedReason,
+                                    reviewController.text,
+                                  ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryTeal,
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shadowColor: AppTheme.primaryTeal.withOpacity(
+                                    0.4),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.check, size: 18),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Submit Review',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildRadioOption(String title,
+      String value,
+      IconData icon,
+      String? selectedValue,
+      Function(String?) onChanged,) {
+    bool isSelected = selectedValue == value;
+    return Container(
+      decoration: BoxDecoration(
+        color: isSelected ? AppTheme.primaryTeal.withOpacity(0.05) : Colors
+            .transparent,
+      ),
+      child: RadioListTile<String>(
+        title: Row(
           children: [
-            Text('Item: ${detail.itemName ?? 'N/A'}', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text('Location: ${detail.loca ?? 'N/A'}-${detail.locn ?? 'N/A'}'),
-            Text('Manufacture: ${detail.dNick ?? 'N/A'}'),
-            Text('Batch: ${detail.batchNo ?? 'N/A'}'),
-            Text('Expiry: ${detail.sExpDate ?? 'N/A'}'),
-            Text('MRP: ${detail.mrp != null ? '₹${detail.mrp!.toStringAsFixed(2)}' : 'N/A'}'),
-            Text('Quantity: ${detail.tQty ?? 0}'),
-            Text('Case: ${detail.caseQ?.toString().replaceAll('.0', '') ?? '0'}'),
-            Text('Loose: ${detail.caseL?.toString().replaceAll('.0', '') ?? '0'}'),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppTheme.primaryTeal.withOpacity(0.1)
+                    : AppTheme.primaryTeal.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(
+                icon,
+                size: 16,
+                color: isSelected ? AppTheme.primaryTeal : AppTheme.onSurface
+                    .withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? AppTheme.primaryTeal : AppTheme.onSurface,
+                ),
+              ),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+        value: value,
+        groupValue: selectedValue,
+        onChanged: onChanged,
+        dense: false,
+        activeColor: AppTheme.primaryTeal,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      color: AppTheme.primaryTeal.withOpacity(0.1),
+    );
+  }
+
+  Widget _buildBatchList(List<String> batchNumbers, String? selectedBatch,
+      Function setState, TextEditingController controller,
+      Function(String?) onBatchSelected) {
+    if (batchNumbers.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.lightTeal.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.lightTeal.withOpacity(0.3),
           ),
+        ),
+        child: Text(
+          'No batch data available',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.lightTeal.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.lightTeal.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.list_alt,
+                size: 16,
+                color: AppTheme.primaryTeal,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Available Batches:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryTeal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...batchNumbers.map((batch) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                color: selectedBatch == batch
+                    ? AppTheme.primaryTeal.withOpacity(0.1)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selectedBatch == batch
+                      ? AppTheme.primaryTeal
+                      : AppTheme.primaryTeal.withOpacity(0.2),
+                ),
+              ),
+              child: RadioListTile<String>(
+                title: Text(
+                  batch,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selectedBatch == batch
+                        ? FontWeight.w600
+                        : FontWeight.w500,
+                    color: selectedBatch == batch
+                        ? AppTheme.primaryTeal
+                        : AppTheme.onSurface,
+                  ),
+                ),
+                value: batch,
+                groupValue: selectedBatch,
+                onChanged: (value) {
+                  setState(() {
+                    onBatchSelected(value);
+                    selectedBatch = value;
+                    controller.text = value ?? '';
+                  });
+                },
+                dense: true,
+                activeColor: AppTheme.primaryTeal,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            );
+          }).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildCompactInfo(String value, IconData icon, Color color) {
+  void _submitReview(BuildContext context, String? selectedReason,
+      String reviewText) {
+    if (selectedReason == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select a reason.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
+    if ((selectedReason == 'batch_change' ||
+        selectedReason == 'short_qty' ||
+        selectedReason == 'damage_product' ||
+        selectedReason == 'multiple') &&
+        reviewText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter the required information.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Create remark text
+    String remarkText = '';
+    switch (selectedReason) {
+      case 'batch_change':
+        remarkText = 'Batch change --> $reviewText';
+        break;
+      case 'short_qty':
+        remarkText = 'Short quantity supplied --> $reviewText';
+        break;
+      case 'not_available':
+        remarkText = 'Not available';
+        break;
+      case 'damage_product':
+        remarkText = 'Damage product --> $reviewText';
+        break;
+      case 'multiple':
+        remarkText = 'Supplied multiple batch and quantity --> $reviewText';
+        break;
+      case 'none':
+        remarkText = '';
+        break;
+    }
+
+    // Set the pNote in detail and trigger rebuild
+    setState(() {
+      widget.detail.pNote = remarkText;
+    });
+
+    // Auto-select the item after submitting review
+    widget.onSelectionChanged(widget.detail.itemDetailId.toString(), true);
+
+    // Call the callback if provided
+    widget.onRemarkSubmitted?.call(widget.detail);
+
+    Navigator.of(context).pop();
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(selectedReason == 'none'
+            ? 'Review submitted successfully.'
+            : 'Review submitted: $remarkText'),
+        backgroundColor: AppTheme.primaryTeal,
+      ),
+    );
+  }
+
+  Widget _buildCompactInfo(String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
@@ -1027,7 +1885,6 @@ class CompactDetailCard extends StatelessWidget {
     );
   }
 }
-
 class TrayManagementDialog extends StatefulWidget {
   final PickerData pickerData;
   final VoidCallback onTrayUpdated;

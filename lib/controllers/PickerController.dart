@@ -194,10 +194,7 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
   }
 
   // NEW METHOD: API call to fetch stock detail for a specific item
-  Future<void> fetchStockDetail({
-    required int itemDetailId,
-    required String itemName,
-  }) async {
+  Future<void> fetchStockDetail(int itemDetailId, String itemName,bool show) async {
     try {
       isLoadingStockDetail(true);
       stockDetailList.clear();
@@ -238,7 +235,10 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           print("📊 Stock detail fetched. Count=${stockDetailList.length}");
 
           // Show the stock detail dialog
-          showStockDetailDialog(itemName);
+          if(show){
+            showStockDetailDialog(itemName);
+
+          }
 
         } else {
           print("❌ API returned error: ${stockDetailModel.message}");
@@ -737,7 +737,7 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
 
   // NEW METHOD: Method to be called from UI to show stock detail
   void showItemStockDetail(int itemDetailId, String itemName) {
-    fetchStockDetail(itemDetailId: itemDetailId, itemName: itemName);
+    fetchStockDetail(itemDetailId, itemName,true);
   }
 
   // API call to fetch picker list
@@ -923,40 +923,23 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           print("📊 Stock list fetched. Count=${stockList.length}");
 
           if (stockList.isEmpty) {
-            Get.snackbar(
-              'Info',
-              'No stock data available',
-              backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
-              colorText: AppTheme.primaryTeal,
-            );
+            // Get.snackbar(
+            //   'Info',
+            //   'No stock data available',
+            //   backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
+            //   colorText: AppTheme.primaryTeal,
+            // );
           }
         } else {
           print("❌ API returned error: ${stockModel.message}");
-          Get.snackbar(
-            'Error',
-            stockModel.message ?? 'Failed to fetch stock list',
-            backgroundColor: Colors.red.withOpacity(0.1),
-            colorText: Colors.red,
-          );
         }
       } else {
         print('❌ API Error: ${response.statusCode} - ${response.body}');
-        Get.snackbar(
-          'Error',
-          'Server error. Please try again later.',
-          backgroundColor: Colors.red.withOpacity(0.1),
-          colorText: Colors.red,
-        );
+
       }
     } catch (e) {
       print('🔥 Exception while fetching stock list: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to fetch stock list. Please check your internet connection.',
-        backgroundColor: Colors.red.withOpacity(0.1),
-        colorText: Colors.red,
-        duration: const Duration(seconds: 3),
-      );
+
     } finally {
       isLoadingStockList(false);
       print("🟢 Fetch stock list process finished.");

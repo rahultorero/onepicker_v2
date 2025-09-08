@@ -16,12 +16,12 @@ class MainScreenController extends GetxController with GetTickerProviderStateMix
   late Animation<double> fabScaleAnimation;
   late List<Animation<double>> navAnimations;
 
-  final List<String> titles = ['Home', 'Reports', 'Devices', 'Profile'];
+  final List<String> titles = ['Home', 'Performance', 'Status', 'Info'];
   final List<IconData> icons = [
     Icons.home_filled,
     Icons.analytics,
-    Icons.devices,
-    Icons.person,
+    Icons.dashboard,
+    Icons.network_check_rounded,
   ];
 
   @override

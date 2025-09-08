@@ -20,7 +20,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GetMaterialApp(
-      title: 'Pharma Care App',
+      title: 'One Picker',
       theme: AppTheme.theme,
       home: const SplashScreen(),
       debugShowCheckedModeBanner: false,
@@ -299,7 +299,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   ],
                                 ).createShader(bounds),
                                 child: const Text(
-                                  'PHARMA CARE',
+                                  'One Picker',
                                   style: TextStyle(
                                     fontSize: 36,
                                     fontWeight: FontWeight.bold,
@@ -327,13 +327,14 @@ class _SplashScreenState extends State<SplashScreen>
                                   ),
                                 ),
                                 child: Text(
-                                  'Your Health, Our Priority',
+                                  'Hassle-Free Picking. Smart,Perfect Checking.',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: AppTheme.primaryTeal,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 1,
                                   ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                             ],
@@ -522,7 +523,7 @@ class HomePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Pharma Care',
+          'One Picker',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,

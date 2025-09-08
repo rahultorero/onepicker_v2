@@ -394,7 +394,7 @@ class StatusDashboardScreen extends StatelessWidget {
         }
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: AppTheme.paddingLarge),
+          margin: const EdgeInsets.only(left: 16,right: 16,top: 10),
           child: Row(
             children: [
               Expanded(
@@ -406,7 +406,6 @@ class StatusDashboardScreen extends StatelessWidget {
                   '100%',
                 ),
               ),
-              const SizedBox(width: AppTheme.paddingMedium),
               Expanded(
                 child: _buildMetricCard(
                   'Completed',
@@ -418,7 +417,6 @@ class StatusDashboardScreen extends StatelessWidget {
                           .totalInvoices.value)) * 100).toStringAsFixed(1)}%',
                 ),
               ),
-              const SizedBox(width: AppTheme.paddingMedium),
               Expanded(
                 child: _buildMetricCard(
                   'Pending',
@@ -2004,7 +2002,7 @@ class StatusDashboardScreen extends StatelessWidget {
           const SizedBox(height: 12),
           Expanded(
             child: ListView.builder(
-              scrollDirection: Axis.horizontal, // 👈 make it horizontal
+              scrollDirection: Axis.horizontal,
               itemCount: pendingData.length,
               itemBuilder: (context, index) {
                 final statusData = pendingData[index];

@@ -28,75 +28,131 @@ class TrayAssignerScreen extends StatelessWidget {
     );
   }
 
+
+
   PreferredSizeWidget _buildAppBar(TrayAssignerController controller) {
     return AppBar(
       elevation: 0,
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      leading: Container(
-        margin: const EdgeInsets.all(8),
+      flexibleSpace: Container(
         decoration: BoxDecoration(
-          color: AppTheme.background,
-          borderRadius: BorderRadius.circular(10),
+          gradient: AppTheme.createGradient(
+            AppTheme.primaryGradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryTeal.withOpacity(0.15),
+              offset: const Offset(0, 2),
+              blurRadius: 8,
+              spreadRadius: 0,
+            ),
+          ],
+        ),
+      ),
+      leading: Container(
+        margin: const EdgeInsets.all(AppTheme.marginMedium),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.3),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryTeal.withOpacity(0.1),
+              offset: const Offset(0, 2),
+              blurRadius: 4,
+            ),
+          ],
         ),
         child: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new, size: 18),
-          color: AppTheme.onSurface,
+          color: Colors.white,
           onPressed: () => Get.back(),
         ),
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const Text(
             'Tray Assignment',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: AppTheme.onSurface,
+              color: Colors.white,
+              letterSpacing: -0.25,
             ),
           ),
+          const SizedBox(height: 2),
           Obx(() => Text(
             '${controller.filteredTrayList.length} pending deliveries',
             style: TextStyle(
               fontSize: 12,
-              color: AppTheme.onSurface.withOpacity(0.6),
+              color: Colors.white.withOpacity(0.85),
               fontWeight: FontWeight.w400,
+              letterSpacing: 0.25,
             ),
           )),
         ],
       ),
       actions: [
+        // Live Status Indicator
         Container(
-          margin: const EdgeInsets.only(right: 16),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          margin: const EdgeInsets.only(right: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.warmAccent.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryTeal.withOpacity(0.1),
+                offset: const Offset(0, 2),
+                blurRadius: 4,
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Animated pulsing dot
               Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: AppTheme.warmAccent,
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: AppTheme.success,
                   shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.success.withOpacity(0.4),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               const Text(
                 'Live',
                 style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.warmAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
                 ),
               ),
             ],
           ),
         ),
+
       ],
     );
   }
@@ -379,143 +435,238 @@ class TrayAssignerScreen extends StatelessWidget {
     final itemId = item.sIId ?? 0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: cardColors['border']!.withOpacity(0.3)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.onSurfaceVariant.withOpacity(0.08),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: cardColors['shadow']!.withOpacity(0.1),
+            color: cardColors['primary']!.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+            spreadRadius: -2,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
             blurRadius: 6,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 1),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Header with dynamic background color
+          // Enhanced Header with subtle gradient
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: cardColors['headerBg'],
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.surfaceVariant.withOpacity(0.3),
+                  AppTheme.background,
+                ],
+              ),
               borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(10),
-                topRight: Radius.circular(10),
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              border: Border(
+                left: BorderSide(
+                  color: cardColors['primary']!,
+                  width: 4,
+                ),
               ),
             ),
             child: Row(
               children: [
+                // Refined index badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: cardColors['primary'],
-                    borderRadius: BorderRadius.circular(4),
+                    color: cardColors['primary']!.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: cardColors['primary']!.withOpacity(0.2),
+                      width: 1,
+                    ),
                   ),
                   child: Text(
                     '#${(index + 1).toString().padLeft(2, '0')}',
                     style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: cardColors['primary'],
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Enhanced delivery type badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: cardColors['primary'],
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: cardColors['primary']!.withOpacity(0.25),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    deliveryType,
+                    style: TextStyle(
                       color: cardColors['primaryText'],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ),
                 const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      item.invNo ?? '',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.onSurface,
-                      ),
+                // Elegant invoice container
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: AppTheme.onSurfaceVariant.withOpacity(0.1),
+                      width: 1,
                     ),
-                    Text(
-                      ApiConfig.dateConvert(item.invDate) ?? '',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppTheme.onSurface.withOpacity(0.6),
-                        fontWeight: FontWeight.w400,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        item.invNo ?? '',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.onSurface,
+                          letterSpacing: -0.2,
+                        ),
                       ),
-                    ),
-                  ],
+                      Text(
+                        ApiConfig.dateConvert(item.invDate) ?? '',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.onSurface.withOpacity(0.7),
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Content
+          // Refined Content Section
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                // Party Info
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Icon(
-                        Icons.business,
-                        size: 14,
-                        color: Colors.grey,
-                      ),
+                // Enhanced Party Info Row
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryTeal.withOpacity(0.03),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.primaryTeal.withOpacity(0.08),
+                      width: 1,
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        item.party ?? '',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.onSurface,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => controller.openQRScannerForItem(item),
-                      child: Container(
+                  ),
+                  child: Row(
+                    children: [
+                      // Refined business icon
+                      Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppTheme.warmAccent.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
+                          color: AppTheme.primaryTeal.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(
-                          Icons.qr_code_scanner,
+                        child: Icon(
+                          Icons.business_rounded,
                           size: 14,
-                          color: AppTheme.warmAccent,
+                          color: AppTheme.primaryTeal,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item.party ?? '',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.onSurface,
+                            letterSpacing: -0.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // Enhanced QR scanner button
+                      GestureDetector(
+                        onTap: () => controller.openQRScannerForItem(item),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                AppTheme.warmAccent,
+                                AppTheme.warmAccent.withOpacity(0.8),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.warmAccent.withOpacity(0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.qr_code_scanner_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 12),
 
-                // Details Grid - More compact
+                // Refined Details Grid
                 Row(
                   children: [
                     Expanded(
-                      child: _buildDetailItem(
-                        Icons.location_on_outlined,
+                      child: _buildRefinedDetailItem(
+                        Icons.location_on_rounded,
                         'Location',
                         '${item.area ?? ''} ${item.city ?? ''}',
+                        AppTheme.coralPink,
                       ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: _buildDetailItem(
-                        Icons.person_outline,
+                      child: _buildRefinedDetailItem(
+                        Icons.person_rounded,
                         'Sales Rep',
                         item.sman ?? '',
+                        AppTheme.sage,
                       ),
                     ),
                   ],
@@ -523,7 +674,7 @@ class TrayAssignerScreen extends StatelessWidget {
 
                 const SizedBox(height: 12),
 
-                // Error Message Display
+                // Refined Error Message
                 GetBuilder<TrayAssignerController>(
                   id: 'error_$itemId',
                   builder: (controller) {
@@ -531,28 +682,47 @@ class TrayAssignerScreen extends StatelessWidget {
                     return errorMessage.isNotEmpty
                         ? Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: Colors.red.withOpacity(0.3)),
-                      ),
-                      child: Text(
-                        errorMessage,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.error.withOpacity(0.08),
+                            AppTheme.error.withOpacity(0.04),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppTheme.error.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline_rounded,
+                            color: AppTheme.error,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage,
+                              style: const TextStyle(
+                                color: AppTheme.error,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     )
                         : const SizedBox.shrink();
                   },
                 ),
 
-                // Tray Numbers List (when tray numbers exist)
+                // Refined Tray Numbers
                 GetBuilder<TrayAssignerController>(
                   id: 'trays_$itemId',
                   builder: (controller) {
@@ -560,56 +730,100 @@ class TrayAssignerScreen extends StatelessWidget {
                     return trayNumbers.isNotEmpty
                         ? Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.all(8),
-                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: cardColors['primary']!.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: cardColors['primary']!.withOpacity(0.2)),
+                        gradient: LinearGradient(
+                          colors: [
+                            cardColors['primary']!.withOpacity(0.06),
+                            cardColors['primary']!.withOpacity(0.02),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: cardColors['primary']!.withOpacity(0.15),
+                          width: 1,
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Added Tray Numbers:',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: cardColors['primary']!.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.inventory_2_rounded,
+                                  size: 12,
+                                  color: cardColors['primary'],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Tray Numbers',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: cardColors['primary'],
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
+                          const SizedBox(height: 8),
                           Wrap(
                             spacing: 6,
                             runSpacing: 6,
                             children: trayNumbers.map((trayNumber) {
                               return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: Colors.grey.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: AppTheme.onSurfaceVariant.withOpacity(0.2),
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 3,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
                                       trayNumber,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
-                                        color: Colors.grey,
+                                        color: AppTheme.onSurface,
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
+                                    const SizedBox(width: 6),
                                     GestureDetector(
                                       onTap: () {
                                         controller.removeTrayNumber(itemId, trayNumber);
                                         controller.update(['trays_$itemId']);
                                       },
-                                      child: Icon(
-                                        Icons.close,
-                                        size: 12,
-                                        color: Colors.grey,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.error.withOpacity(0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.close_rounded,
+                                          size: 10,
+                                          color: AppTheme.error,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -624,114 +838,121 @@ class TrayAssignerScreen extends StatelessWidget {
                   },
                 ),
 
-                // Bottom Action Row - Compact design
+                // Enhanced Action Row
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.background,
-                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        AppTheme.surfaceVariant.withOpacity(0.4),
+                        AppTheme.surfaceVariant.withOpacity(0.1),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppTheme.onSurfaceVariant.withOpacity(0.08),
+                      width: 1,
+                    ),
                   ),
                   child: Row(
                     children: [
-                      // Items Count - Smaller
+                      // Refined items count
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.info.withOpacity(0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.info.withOpacity(0.1),
+                              blurRadius: 3,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
+                            Icon(
+                              Icons.inventory_outlined,
+                              size: 12,
+                              color: AppTheme.info,
+                            ),
+                            const SizedBox(width: 4),
                             Text(
                               '${item.lItem ?? 21}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.grey,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.info,
                               ),
                             ),
                             const SizedBox(width: 2),
                             Text(
                               'items',
                               style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey.withOpacity(0.8),
-                                fontWeight: FontWeight.w400,
+                                fontSize: 9,
+                                color: AppTheme.info.withOpacity(0.8),
+                                fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
 
-                      // Tray Input - Smaller
+                      // Refined tray input
                       Expanded(
                         child: Container(
-                          height: 32,
+                          height: 36,
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: Colors.grey.withOpacity(0.3),
-                              width: 1,
-                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryTeal.withOpacity(0.08),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                          alignment: Alignment.center,
                           child: TextField(
                             controller: controller.getTrayController(itemId),
                             textAlign: TextAlign.center,
-                            cursorColor: Colors.grey,
+                            cursorColor: AppTheme.primaryTeal,
                             keyboardType: TextInputType.number,
                             onChanged: (value) => controller.onTrayNumberChanged(item, value),
                             onSubmitted: (value) => controller.onTrayNumberSubmitted(item, value),
                             style: const TextStyle(
                               fontSize: 13,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurface,
+                              letterSpacing: 0.3,
                             ),
                             decoration: const InputDecoration(
-                              filled: true,
-                              fillColor: Colors.white,
-                              hintText: 'Tray No',
+                              hintText: 'Enter Tray Number',
                               hintStyle: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
+                                fontSize: 11,
+                                color: AppTheme.onSurfaceVariant,
                                 fontWeight: FontWeight.w400,
                               ),
                               border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              isCollapsed: true,
-                              contentPadding: EdgeInsets.zero,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
                             ),
                           ),
                         ),
                       ),
 
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 12),
 
-                      // Delivery Type Display - Updated colors
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: cardColors['primary'],
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          deliveryType,
-                          style: TextStyle(
-                            color: cardColors['primaryText'],
-                            fontWeight: FontWeight.w500,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(width: 6),
-
-                      // Manual Add Button - Show only when tray numbers exist
+                      // Enhanced submit button
                       GetBuilder<TrayAssignerController>(
                         id: 'submit_$itemId',
                         builder: (controller) {
@@ -740,15 +961,27 @@ class TrayAssignerScreen extends StatelessWidget {
                               ? GestureDetector(
                             onTap: () => controller.handleManualSubmit(item),
                             child: Container(
-                              padding: const EdgeInsets.all(6),
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: AppTheme.warmAccent,
-                                borderRadius: BorderRadius.circular(6),
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.success,
+                                    AppTheme.success.withOpacity(0.8),
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.success.withOpacity(0.3),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: const Icon(
-                                Icons.check,
+                                Icons.check_rounded,
                                 color: Colors.white,
-                                size: 14,
+                                size: 16,
                               ),
                             ),
                           )
@@ -766,105 +999,109 @@ class TrayAssignerScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailItem(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          size: 12,
-          color: AppTheme.onSurface.withOpacity(0.6),
+  Widget _buildRefinedDetailItem(IconData icon, String label, String value, Color accentColor) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            accentColor.withOpacity(0.06),
+            accentColor.withOpacity(0.02),
+          ],
         ),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: AppTheme.onSurface.withOpacity(0.6),
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.onSurface,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: accentColor.withOpacity(0.15),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: accentColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Icon(
+              icon,
+              size: 11,
+              color: accentColor,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: accentColor.withOpacity(0.8),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.onSurface,
+                    letterSpacing: -0.1,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Map<String, Color> _getDeliveryTypeColors(String deliveryType) {
+  Map<String, dynamic> _getDeliveryTypeColors(String deliveryType) {
     switch (deliveryType.toUpperCase()) {
       case 'URGENT':
         return {
-          'primary': const Color(0xFFF50E0E), // Red
+          'primary': AppTheme.error,
           'primaryText': Colors.white,
-          'headerBg': const Color(0xFFFF9999), // Light red
-          'border': const Color(0xFFF50E0E),
-          'shadow': const Color(0xFFF50E0E),
         };
       case 'PICK-UP':
         return {
-          'primary': const Color(0xFF15EE81), // Green
-          'primaryText': Colors.black,
-          'headerBg': const Color(0xFF15EE81).withOpacity(0.3),
-          'border': const Color(0xFF15EE81),
-          'shadow': const Color(0xFF15EE81),
+          'primary': AppTheme.success,
+          'primaryText': Colors.white,
         };
       case 'DELIVERY':
         return {
-          'primary': const Color(0xFFFFB266), // Orange
-          'primaryText': Colors.black,
-          'headerBg': const Color(0xFFFFB266).withOpacity(0.3),
-          'border': const Color(0xFFFFB266),
-          'shadow': const Color(0xFFFFB266),
+          'primary': AppTheme.amberGold,
+          'primaryText': Colors.white,
         };
       case 'MEDREP':
         return {
-          'primary': const Color(0xFFEAF207), // Yellow
-          'primaryText': Colors.black,
-          'headerBg': const Color(0xFFEAF207).withOpacity(0.3),
-          'border': const Color(0xFFEAF207),
-          'shadow': const Color(0xFFEAF207),
+          'primary': AppTheme.warning,
+          'primaryText': Colors.white,
         };
       case 'COD':
         return {
-          'primary': const Color(0xFFFF99FF), // Pink
-          'primaryText': Colors.black,
-          'headerBg': const Color(0xFFFF99FF).withOpacity(0.3),
-          'border': const Color(0xFFFF99FF),
-          'shadow': const Color(0xFFFF99FF),
+          'primary': AppTheme.lavender,
+          'primaryText': Colors.white,
         };
       case 'OUTSTATION':
         return {
-          'primary': const Color(0xFF99FFFF), // Sky blue
-          'primaryText': Colors.black,
-          'headerBg': const Color(0xFF99FFFF).withOpacity(0.3),
-          'border': const Color(0xFF99FFFF),
-          'shadow': const Color(0xFF99FFFF),
+          'primary': AppTheme.info,
+          'primaryText': Colors.white,
         };
       default:
         return {
           'primary': AppTheme.primaryTeal,
           'primaryText': Colors.white,
-          'headerBg': AppTheme.primaryTeal.withOpacity(0.1),
-          'border': AppTheme.primaryTeal,
-          'shadow': AppTheme.primaryTeal,
         };
     }
   }
-
 
   IconData _getFilterIcon(String filterType) {
     switch (filterType) {

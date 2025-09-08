@@ -4,16 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:onepicker/controllers/HomeScreenController.dart';
-import 'package:onepicker/controllers/PickerController.dart';
 import 'package:onepicker/model/PickerListDetailModel.dart';
 
 import '../controllers/CheckerController.dart';
+import '../controllers/PickerController.dart';
 import '../model/PickerDataModel.dart';
 import '../theme/AppTheme.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+
+import 'PickerListTab.dart';
 
 class CheckerDetailScreen extends StatefulWidget {
   final PickerData pickerData;
@@ -824,7 +826,12 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
           onPressed: controller.isSubmittingData.value
               ? null
               : () {
-            controller.submitCheckedItems(widget.pickerData, checkedItems);
+            if(checkedItems.length == controller.packerDetails.length){
+              _showTrayManagementDialog();
+            }else{
+              controller.submitCheckedItems(widget.pickerData, checkedItems);
+
+            }
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.teal,
@@ -858,6 +865,616 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
             ),
           ),
         )),
+      ),
+    );
+  }
+
+
+  void _showTrayManagementDialog() {
+    final controller = Get.find<CheckerController>();
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return TrayManagementDialog(        // <-- This is where TrayManagementDialog is called
+          pickerData: widget.pickerData,
+          onTrayUpdated: () {
+            controller.submitCheckedItems(widget.pickerData, checkedItems);
+            Get.back();
+          },
+          checkedItems: checkedItems,
+        );
+      },
+    );
+  }
+
+
+}
+class TrayManagementDialog extends StatefulWidget {
+  final PickerData pickerData;
+  final VoidCallback onTrayUpdated;
+  final List<PickerMenuDetail> checkedItems;
+
+   TrayManagementDialog({
+    Key? key,
+    required this.pickerData,
+    required this.onTrayUpdated,
+    required this.checkedItems
+  }) : super(key: key);
+
+  @override
+  State<TrayManagementDialog> createState() => _TrayManagementDialogState();
+}
+
+class _TrayManagementDialogState extends State<TrayManagementDialog> {
+  final TextEditingController _trayController = TextEditingController();
+  final FocusNode _trayFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  List<String> oldTrays = [];
+  List<String> newTrays = [];
+  bool isLoading = false;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeTrays();
+
+    // Listen to focus changes to scroll to input when focused
+    _trayFocusNode.addListener(() {
+      if (_trayFocusNode.hasFocus) {
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _scrollToBottom();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _trayController.dispose();
+    _trayFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _initializeTrays() {
+    final trayNo = widget.pickerData.trayNo ?? '';
+    if (trayNo.isNotEmpty && trayNo != 'N/A') {
+      oldTrays = trayNo
+          .split(',')
+          .map((tray) => tray.trim())
+          .where((tray) => tray.isNotEmpty)
+          .toList();
+    }
+  }
+
+  String _formatTrayNumber(String input) {
+    final length = input.length;
+    switch (length) {
+      case 1:
+        return "9000$input";
+      case 2:
+        return "900$input";
+      case 3:
+        return "90$input";
+      case 4:
+        return "9$input";
+      case 5:
+        return input;
+      default:
+        return "";
+    }
+  }
+
+  void _addTrayNumber() {
+    final input = _trayController.text.trim();
+    if (input.isEmpty) {
+      setState(() {
+        errorMessage = "Please enter a tray number";
+      });
+      return;
+    }
+
+    final formattedTray = _formatTrayNumber(input);
+    if (formattedTray.isEmpty) {
+      setState(() {
+        errorMessage = "Invalid tray number format (1-5 digits only)";
+      });
+      return;
+    }
+
+    if (oldTrays.contains(formattedTray)) {
+      setState(() {
+        errorMessage = "Tray already exists in current list";
+      });
+      return;
+    }
+
+    if (newTrays.contains(formattedTray)) {
+      setState(() {
+        errorMessage = "Tray already added to new list";
+      });
+      return;
+    }
+
+    setState(() {
+      newTrays.add(formattedTray);
+      _trayController.clear();
+      errorMessage = null;
+    });
+  }
+
+  void _removeTrayNumber(String trayNumber) {
+    setState(() {
+      newTrays.remove(trayNumber);
+      if (newTrays.isEmpty) {
+        errorMessage = null;
+      }
+    });
+  }
+
+  Future<void> _submitSkip() async{
+    final controller = Get.find<CheckerController>();
+    Navigator.of(context).pop();
+
+    controller.submitCheckedItems(widget.pickerData, widget.checkedItems);
+    Get.back();
+  }
+
+  Future<void> _submitTrays() async {
+    if (newTrays.isEmpty) {
+      setState(() {
+        errorMessage = "Please add at least one tray number";
+      });
+      return;
+    }
+
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final controller = Get.find<CheckerController>();
+      final allTrays = [...oldTrays, ...newTrays];
+      final combinedTrayString = allTrays.join(',');
+
+      await controller.assignTray(
+        siId: widget.pickerData.sIId ?? 0,
+        trayNumbers: combinedTrayString,
+        trayCount: newTrays.length,
+      );
+
+      Navigator.of(context).pop();
+      widget.onTrayUpdated();
+
+
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  Widget _buildTrayChip(String tray, {bool isRemovable = false}) {
+    return Container(
+      margin: const EdgeInsets.only(right: 6, bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isRemovable
+            ? AppTheme.accentGreen.withOpacity(0.15)
+            : AppTheme.lightTeal.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isRemovable
+              ? AppTheme.accentGreen.withOpacity(0.4)
+              : AppTheme.lightTeal.withOpacity(0.4),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            tray,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.onSurface,
+            ),
+          ),
+          if (isRemovable) ...[
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => _removeTrayNumber(tray),
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.close,
+                  size: 12,
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: keyboardHeight > 0 ? 20 : 40,
+      ),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: 420,
+          maxHeight: mediaQuery.size.height * 0.9,
+        ),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Compact Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryTeal,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manage Trays',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${widget.pickerData.invNo ?? 'N/A'}',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.85),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(Icons.close, color: Colors.white, size: 22),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+                ],
+              ),
+            ),
+
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                controller: _scrollController,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Existing Trays - Compact
+                    if (oldTrays.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          Icon(Icons.inventory_2,
+                              size: 16,
+                              color: AppTheme.lightTeal),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Current (${oldTrays.length})',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurface,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        children: oldTrays.map((tray) => _buildTrayChip(tray)).toList(),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // New Trays - Compact
+                    Row(
+                      children: [
+                        Icon(Icons.add_circle_outline,
+                            size: 16,
+                            color: AppTheme.accentGreen),
+                        const SizedBox(width: 6),
+                        Text(
+                          'New (${newTrays.length})',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // New trays or placeholder
+                    Container(
+                      width: double.infinity,
+                      constraints: const BoxConstraints(minHeight: 50),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.accentGreen.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.accentGreen.withOpacity(0.2),
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                      child: newTrays.isEmpty
+                          ? Center(
+                        child: Text(
+                          'No new trays added yet',
+                          style: TextStyle(
+                            color: AppTheme.onSurface.withOpacity(0.5),
+                            fontStyle: FontStyle.italic,
+                            fontSize: 13,
+                          ),
+                        ),
+                      )
+                          : Wrap(
+                        children: newTrays.map((tray) =>
+                            _buildTrayChip(tray, isRemovable: true)
+                        ).toList(),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Input Section - More prominent
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryTeal.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primaryTeal.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Add Tray Number',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _trayController,
+                                  focusNode: _trayFocusNode,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(5),
+                                  ],
+                                  decoration: InputDecoration(
+                                    hintText: 'Enter 1-5 digits',
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.primaryTeal.withOpacity(0.3),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: AppTheme.primaryTeal,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                  onSubmitted: (_) => _addTrayNumber(),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Container(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: isLoading ? null : _addTrayNumber,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.accentGreen,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  ),
+                                  child: Text(
+                                    'Add',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Error Message - Improved
+                    if (errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.warning_rounded,
+                                color: Colors.red.shade600, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage!,
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Add some bottom padding for keyboard
+                    SizedBox(height: keyboardHeight > 0 ? 20 : 0),
+                  ],
+                ),
+              ),
+            ),
+
+            // Action Buttons - Always visible
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                border: Border(
+                  top: BorderSide(
+                    color: AppTheme.shadowColor.withOpacity(0.1),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: isLoading ? null : () => {
+                        _submitSkip()
+                      },
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppTheme.primaryTeal),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: Text(
+                        'Skip',
+                        style: TextStyle(
+                          color: AppTheme.primaryTeal,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: (isLoading || newTrays.isEmpty) ? null : _submitTrays,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryTeal,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      child: isLoading
+                          ? SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                          : Text(
+                        'Submit${newTrays.isNotEmpty ? ' (${newTrays.length})' : ''}',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

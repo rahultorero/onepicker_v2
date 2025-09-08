@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:onepicker/view/DashboardScreen.dart';
 import 'package:onepicker/view/PPCDashboardScreen.dart';
 import 'package:onepicker/view/StatusDashboardScreen.dart';
 import 'dart:math' as math;
@@ -49,7 +50,7 @@ class MainScreen extends StatelessWidget {
                     const HomeScreen(),
                     PPCDashboardScreen(),
                     StatusDashboardScreen(),
-                    const ProfileScreen(),
+                    DashboardScreen(),
                   ],
                 )),
               ],
