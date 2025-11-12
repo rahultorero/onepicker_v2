@@ -1067,6 +1067,7 @@ class DashboardScreen extends StatelessWidget {
         border: Border.all(color: AppTheme.onSurfaceVariant.withOpacity(0.2)),
       ),
       child: TextField(
+        controller: controller.searchController,
         style: AppTheme.bodyMedium.copyWith(color: AppTheme.onSurface),
         decoration: InputDecoration(
           hintText: 'Search orders...',
@@ -1084,6 +1085,7 @@ class DashboardScreen extends StatelessWidget {
           suffixIcon: Obx(() => controller.searchText.value.isNotEmpty
               ? IconButton(
             onPressed: () {
+              controller.searchController.clear();
               controller.searchText.value = '';
               controller.filterData();
             },
@@ -1726,6 +1728,8 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildOrderFooter(DBStateData item) {
+    final bgColor = getDeliveryTypeStyle(item.delType);
+
     return Row(
       children: [
         if (item.iTime != null) ...[
@@ -1749,13 +1753,17 @@ class DashboardScreen extends StatelessWidget {
             vertical: 6,
           ),
           decoration: BoxDecoration(
-            gradient: AppTheme.createGradient(AppTheme.accentGradient),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: bgColor['gradientColors'],
+            ),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             item.delType ?? 'N/A',
             style: AppTheme.labelSmall.copyWith(
-              color: Colors.white,
+              color:  bgColor['textColor'],
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1766,6 +1774,97 @@ class DashboardScreen extends StatelessWidget {
 
   // FIXED: Completely rewritten detail view without nested Obx
 
+
+  Map<String, Map<String, dynamic>> get deliveryTypeConfig => {
+    'URGENT': {
+      'backgroundColor': const Color(0xFFFF6B6B), // Coral Red - more visible
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFFFF6B6B), const Color(0xFFFF8E8E)],
+      'cardGradientColors': [
+        const Color(0xFFFF6B6B).withOpacity(0.03),
+        const Color(0xFFFF6B6B).withOpacity(0.08),
+        const Color(0xFFFF6B6B).withOpacity(0.12),
+      ],
+      'icon': Icons.priority_high,
+      'label': 'URGENT',
+    },
+    'PICK-UP': {
+      'backgroundColor': const Color(0xFF4ECDC4), // Turquoise Green - fresh
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF4ECDC4), const Color(0xFF6DD5D0)],
+      'cardGradientColors': [
+        const Color(0xFF4ECDC4).withOpacity(0.03),
+        const Color(0xFF4ECDC4).withOpacity(0.08),
+        const Color(0xFF4ECDC4).withOpacity(0.12),
+      ],
+      'icon': Icons.local_shipping,
+      'label': 'PICKUP',
+    },
+    'DELIVERY': {
+      'backgroundColor': const Color(0xFFFFBE0B), // Vibrant Amber
+      'textColor': Colors.black,
+      'gradientColors': [const Color(0xFFFFBE0B), const Color(0xFFFFC83D)],
+      'cardGradientColors': [
+        const Color(0xFFFFBE0B).withOpacity(0.03),
+        const Color(0xFFFFBE0B).withOpacity(0.08),
+        const Color(0xFFFFBE0B).withOpacity(0.12),
+      ],
+      'icon': Icons.delivery_dining,
+      'label': 'DELIVERY',
+    },
+    'MEDREP': {
+      'backgroundColor': const Color(0xFFFB8500), // Burnt Orange
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFFFB8500), const Color(0xFFFC9A33)],
+      'cardGradientColors': [
+        const Color(0xFFFB8500).withOpacity(0.03),
+        const Color(0xFFFB8500).withOpacity(0.08),
+        const Color(0xFFFB8500).withOpacity(0.12),
+      ],
+      'icon': Icons.medical_services,
+      'label': 'MEDREP',
+    },
+    'COD': {
+      'backgroundColor': const Color(0xFF8367C7), // Lavender Purple
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF8367C7), const Color(0xFF9B7ED1)],
+      'cardGradientColors': [
+        const Color(0xFF8367C7).withOpacity(0.03),
+        const Color(0xFF8367C7).withOpacity(0.08),
+        const Color(0xFF8367C7).withOpacity(0.12),
+      ],
+      'icon': Icons.payments,
+      'label': 'COD',
+    },
+    'OUTSTATION': {
+      'backgroundColor': const Color(0xFF219EBC), // Ocean Blue
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF219EBC), const Color(0xFF4AADC7)],
+      'cardGradientColors': [
+        const Color(0xFF219EBC).withOpacity(0.03),
+        const Color(0xFF219EBC).withOpacity(0.08),
+        const Color(0xFF219EBC).withOpacity(0.12),
+      ],
+      'icon': Icons.flight_takeoff,
+      'label': 'OUTSTATION',
+    },
+  };
+
+  Map<String, dynamic> getDeliveryTypeStyle(String? delType) {
+    final type = delType?.toUpperCase() ?? '';
+    return deliveryTypeConfig[type] ?? {
+      'backgroundColor': const Color(0xFF457B9D), // Steel Blue default
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF457B9D), const Color(0xFF5A8BA8)],
+      'cardGradientColors': [
+        const Color(0xFF457B9D).withOpacity(0.03),
+        const Color(0xFF457B9D).withOpacity(0.08),
+        const Color(0xFF457B9D).withOpacity(0.12),
+      ],
+      'icon': Icons.local_shipping,
+      'label': 'STANDARD',
+    };
+  }
 
 
   Widget _buildPrintButton(String label, bool isPrinted, IconData icon, VoidCallback onTap) {

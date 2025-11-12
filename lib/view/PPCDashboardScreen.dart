@@ -49,7 +49,7 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
         physics: const BouncingScrollPhysics(), // Smooth scrolling
         slivers: [
           SliverAppBar(
-            expandedHeight: 130,
+            expandedHeight: 140,
             floating: false,
             pinned: false,
             snap: false,
@@ -124,6 +124,7 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
       children: [
         Expanded(
           child: Obx(() => Container(
+            height: 40, // Add explicit height
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
@@ -158,6 +159,7 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
           child: GestureDetector(
             onTap: widget.controller.selectDateRange,
             child: Container(
+              height: 40, // Add explicit height (same as dropdown)
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:convert';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../controllers/AdminController.dart';
@@ -27,10 +30,10 @@ class AdminScreen extends StatelessWidget {
               elevation: 0,
               backgroundColor: Colors.transparent,
               centerTitle: true,
-              // leading: IconButton(
-              //   icon: const Icon(Icons.arrow_back, color: Colors.white),
-              //   onPressed: () => Navigator.pop(context),
-              // ),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
               flexibleSpace: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -375,33 +378,95 @@ class _UserListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isTablet = screenWidth >= 600;
+    final crossAxisCount = isTablet ? (screenWidth >= 900 ? 3 : 2) : 1;
+
     return Obx(() => users.isEmpty
-        ? _EmptyState(isNewUser: isNewUser, hasSearchQuery: controller.searchQuery.isNotEmpty)
+        ? _EmptyState(
+        isNewUser: isNewUser,
+        hasSearchQuery: controller.searchQuery.isNotEmpty)
         : RefreshIndicator(
       onRefresh: controller.fetchUserLists,
       color: AppTheme.primaryTeal,
       backgroundColor: Colors.white,
-      child: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-        physics: const BouncingScrollPhysics(),
-        itemCount: users.length,
-        itemBuilder: (context, index) {
-          return AnimatedContainer(
-            duration: Duration(milliseconds: 200 + (index * 50)),
-            curve: Curves.easeOutBack,
-            child: _UserCard(
-              user: users[index],
-              isNewUser: isNewUser,
-              controller: controller,
-              index: index,
-            ),
-          );
-        },
-      ),
+      child: isTablet
+          ? _buildGridView(context, crossAxisCount)
+          : _buildListView(),
     ));
   }
-}
 
+  Widget _buildListView() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+      physics: const BouncingScrollPhysics(),
+      itemCount: users.length,
+      itemBuilder: (context, index) {
+        return AnimatedContainer(
+          duration: Duration(milliseconds: 200 + (index * 50)),
+          curve: Curves.easeOutBack,
+          child: _UserCard(
+            user: users[index],
+            isNewUser: isNewUser,
+            controller: controller,
+            index: index,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildGridView(BuildContext context, int crossAxisCount) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+
+        // Dynamic spacing
+        const spacing = 16.0;
+
+        // ⭐ KEY SOLUTION: Fixed height for cards
+        // Adjust this value based on your _UserCard content
+        final cardHeight = 150.0;  // Set appropriate height for your card design
+
+        // Calculate available width per card
+        const horizontalPadding = 40.0; // 20 * 2
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final availableWidth = screenWidth - horizontalPadding - totalSpacing;
+        final cardWidth = availableWidth / crossAxisCount;
+
+        // Calculate aspect ratio dynamically based on actual dimensions
+        final childAspectRatio = cardWidth / cardHeight;
+
+        print("User Grid - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          physics: const BouncingScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: childAspectRatio,
+          ),
+          itemCount: users.length,
+          itemBuilder: (context, index) {
+            return AnimatedContainer(
+              duration: Duration(milliseconds: 200 + (index * 50)),
+              curve: Curves.easeOutBack,
+              child: _UserCard(
+                user: users[index],
+                isNewUser: isNewUser,
+                controller: controller,
+                index: index,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+}
 // Enhanced Empty State
 class _EmptyState extends StatelessWidget {
   final bool isNewUser;
@@ -848,6 +913,7 @@ class EditUserDialog extends StatelessWidget {
                       label: 'Full Name',
                       icon: Icons.person_outline,
                       hint: 'Enter full name',
+                      isReadOnly: true,
                     ),
                     const SizedBox(height: 16),
                     _ModernTextField(
@@ -855,6 +921,7 @@ class EditUserDialog extends StatelessWidget {
                       label: 'Username',
                       icon: Icons.account_circle_outlined,
                       hint: 'Enter username',
+                      allowSpaces: false,
                     ),
                     const SizedBox(height: 16),
                     _ModernTextField(
@@ -915,6 +982,7 @@ class EditUserDialog extends StatelessWidget {
   }
 }
 
+
 class RoleAssignmentDialog extends StatelessWidget {
   final AdminController controller;
 
@@ -926,7 +994,7 @@ class RoleAssignmentDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         width: double.maxFinite,
-        height: 600, // Fixed height
+        height: 700, // Increased height to accommodate dropdowns
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -962,7 +1030,8 @@ class RoleAssignmentDialog extends StatelessWidget {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.assignment, color: Colors.white, size: 18),
+                    child: const Icon(
+                        Icons.assignment, color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -979,7 +1048,8 @@ class RoleAssignmentDialog extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'For ${controller.currentEditingUser?.eName ?? 'User'}',
+                          'For ${controller.currentEditingUser?.eName ??
+                              'User'}',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.white.withOpacity(0.8),
@@ -991,7 +1061,8 @@ class RoleAssignmentDialog extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => Get.back(),
-                    icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                    icon: const Icon(
+                        Icons.close, color: Colors.white, size: 18),
                     style: IconButton.styleFrom(
                       backgroundColor: Colors.white.withOpacity(0.2),
                       shape: RoundedRectangleBorder(
@@ -1025,7 +1096,7 @@ class RoleAssignmentDialog extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Select multiple roles to assign to this user',
+                      'Select multiple roles and assign company/branch access',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppTheme.primaryTeal,
@@ -1037,109 +1108,270 @@ class RoleAssignmentDialog extends StatelessWidget {
               ),
             ),
 
-            // Scrollable Role List
+            // Scrollable Content
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Obx(() => Column(
-                  children: controller.selectedRoles.keys.map((role) {
-                    final isSelected = controller.selectedRoles[role]!;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Roles Section
+                    Text(
+                      'User Roles',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Obx(() =>
+                        Column(
+                          children: controller.selectedRoles.keys.map((role) {
+                            final isSelected = controller.selectedRoles[role]!;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppTheme.primaryTeal.withOpacity(0.08)
+                                    : Colors.grey.withOpacity(0.03),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? AppTheme.primaryTeal
+                                      : Colors.grey.withOpacity(0.2),
+                                  width: isSelected ? 1.5 : 1,
+                                ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: () {
+                                    controller.selectedRoles[role] =
+                                    !isSelected;
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? AppTheme.primaryTeal
+                                                : Colors.transparent,
+                                            borderRadius: BorderRadius.circular(
+                                                4),
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? AppTheme.primaryTeal
+                                                  : Colors.grey.withOpacity(
+                                                  0.4),
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: isSelected
+                                              ? const Icon(
+                                            Icons.check,
+                                            color: Colors.white,
+                                            size: 12,
+                                          )
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment
+                                                .start,
+                                            children: [
+                                              Text(
+                                                role,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isSelected
+                                                      ? AppTheme.primaryTeal
+                                                      : AppTheme.onSurface,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                _getRoleDescription(role),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: AppTheme.onSurface
+                                                      .withOpacity(0.6),
+                                                  fontWeight: FontWeight.w400,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryTeal
+                                                  .withOpacity(0.1),
+                                              borderRadius: BorderRadius
+                                                  .circular(6),
+                                            ),
+                                            child: Icon(
+                                              Icons.check_circle,
+                                              color: AppTheme.primaryTeal,
+                                              size: 16,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        )),
+
+                    const SizedBox(height: 24),
+
+                    // Company & Branch Section
+                    Text(
+                      'Company & Branch Assignment',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Company Dropdown
+                    Container(
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppTheme.primaryTeal.withOpacity(0.08)
-                            : Colors.grey.withOpacity(0.03),
+                        color: Colors.grey.withOpacity(0.03),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected
-                              ? AppTheme.primaryTeal
-                              : Colors.grey.withOpacity(0.2),
-                          width: isSelected ? 1.5 : 1,
+                          color: Colors.grey.withOpacity(0.2),
                         ),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () {
-                            controller.selectedRoles[role] = !isSelected;
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 20,
-                                  height: 20,
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? AppTheme.primaryTeal
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? AppTheme.primaryTeal
-                                          : Colors.grey.withOpacity(0.4),
-                                      width: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Company',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.onSurface.withOpacity(0.6),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Obx(() =>
+                                DropdownButton<int>(
+                                  value:  controller.selectedCompanyId.value,
+                                  isExpanded: true,
+                                  underline: Container(),
+                                  hint: Text(
+                                    'Select Company',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppTheme.onSurface.withOpacity(
+                                          0.5),
                                     ),
                                   ),
-                                  child: isSelected
-                                      ? const Icon(
-                                    Icons.check,
-                                    color: Colors.white,
-                                    size: 12,
-                                  )
-                                      : null,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        role,
+                                  items: controller.companyList.map((company) {
+                                    return DropdownMenuItem<int>(
+                                      value: company['id'],
+                                      child: Text(
+                                        company['name'],
                                         style: TextStyle(
                                           fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: isSelected
-                                              ? AppTheme.primaryTeal
-                                              : AppTheme.onSurface,
+                                          color: AppTheme.onSurface,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        _getRoleDescription(role),
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          color: AppTheme.onSurface.withOpacity(0.6),
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (isSelected)
-                                  Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.primaryTeal.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Icon(
-                                      Icons.check_circle,
-                                      color: AppTheme.primaryTeal,
-                                      size: 16,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    controller.selectedCompanyId.value =
+                                        value ?? 0;
+                                    controller.onCompanySelected(value ?? 0);
+                                  },
+                                )),
+                          ],
                         ),
                       ),
-                    );
-                  }).toList(),
-                )),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Branch Dropdown
+                    Obx(() =>
+                        Visibility(
+                          visible: controller.showBranchDropdown.value,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.withOpacity(0.03),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.grey.withOpacity(0.2),
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Branch',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.onSurface.withOpacity(
+                                          0.6),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  DropdownButton<int>(
+                                    value: controller.selectedBranchId.value,
+                                    isExpanded: true,
+                                    underline: Container(),
+                                    hint: Text(
+                                      'Select Branch',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: AppTheme.onSurface.withOpacity(
+                                            0.5),
+                                      ),
+                                    ),
+                                    items: controller.branchList.map((branch) {
+                                      return DropdownMenuItem<int>(
+                                        value: branch['id'],
+                                        child: Text(
+                                          branch['name'],
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppTheme.onSurface,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      controller.selectedBranchId.value =
+                                          value ?? 0;
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        )),
+
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
 
@@ -1177,25 +1409,37 @@ class RoleAssignmentDialog extends StatelessWidget {
         ),
       ),
     );
-  }
 
-  String _getRoleDescription(String role) {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'Full system access and user management';
-      case 'doctor':
-        return 'Medical consultation and patient care';
-      case 'nurse':
-        return 'Patient care and medical assistance';
-      case 'receptionist':
-        return 'Front desk operations and scheduling';
-      case 'manager':
-        return 'Department management and oversight';
-      default:
-        return 'Standard user permissions';
-    }
+
+
   }
 }
+
+String _getRoleDescription(String role) {
+  switch (role.toLowerCase()) {
+    case 'admin':
+      return 'Full system access and user management';
+
+    case 'tray assigner':
+      return 'Assign and manage tray operations';
+    case 'picker':
+      return 'Item picking and selection';
+    case 'picker manager':
+      return 'Manage picking operations and staff';
+    case 'checker':
+      return 'Quality control and verification';
+    case 'packer':
+      return 'Package and prepare items for dispatch';
+    case 'merger':
+      return 'Tray merger and operations';
+    case 'solver':
+      return 'Problem resolution and troubleshooting';
+    default:
+      return 'Standard user permissions';
+  }
+}
+
+
 
 class UserDetailsDialog extends StatelessWidget {
   final AdminController controller;
@@ -1500,6 +1744,8 @@ class _ModernTextField extends StatelessWidget {
   final IconData icon;
   final String hint;
   final bool isPassword;
+  final bool isReadOnly;
+  final bool allowSpaces; // 👈 NEW: control space input
 
   const _ModernTextField({
     required this.controller,
@@ -1507,6 +1753,8 @@ class _ModernTextField extends StatelessWidget {
     required this.icon,
     required this.hint,
     this.isPassword = false,
+    this.isReadOnly = false,
+    this.allowSpaces = true, // 👈 default allows spaces
   });
 
   @override
@@ -1532,6 +1780,12 @@ class _ModernTextField extends StatelessWidget {
           child: TextField(
             controller: controller,
             obscureText: isPassword,
+            readOnly: isReadOnly,
+            inputFormatters: allowSpaces
+                ? null
+                : [
+              FilteringTextInputFormatter.deny(RegExp(r'\s')), // 👈 Block spaces
+            ],
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
@@ -1552,7 +1806,6 @@ class _ModernTextField extends StatelessWidget {
     );
   }
 }
-
 // Detail Item Widget
 
 // Particle Painter for animated background

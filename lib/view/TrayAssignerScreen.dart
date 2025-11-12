@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:onepicker/services/services.dart';
+import 'package:flutter/services.dart';
 
 import '../controllers/TrayAssignerController.dart';
 import '../model/SearchFilterListModel.dart';
@@ -321,7 +322,11 @@ class TrayAssignerScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 4),
                       itemCount: controller.searchFilterList.length,
                       itemBuilder: (context, index) {
-                        final item = controller.searchFilterList[index];
+                        // Sort the list by Pending in descending order
+                        final sortedList = List.from(controller.searchFilterList)
+                          ..sort((a, b) => (b.Pending ?? 0).compareTo(a.Pending ?? 0));
+
+                        final item = sortedList[index];
                         final displayText = _getDisplayText(item, controller.selectedFilterType.value);
 
                         return InkWell(
@@ -329,17 +334,29 @@ class TrayAssignerScreen extends StatelessWidget {
                           borderRadius: BorderRadius.circular(6),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            child: Text(
-                              displayText,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                              ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  displayText,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                                Spacer(),
+                                Text(
+                                  item.Pending?.toString() ?? '0',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         );
                       },
-                    ),
+                    )
                   ),
               ],
             );
@@ -414,20 +431,77 @@ class TrayAssignerScreen extends StatelessWidget {
         );
       }
 
-      return RefreshIndicator(
-        onRefresh: controller.fetchTrayAssignerList,
-        color: AppTheme.primaryTeal,
-        child: ListView.builder(
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          final isTablet = screenWidth >= 600;
+          final crossAxisCount = isTablet ? (screenWidth >= 900 ? 3 : 2) : 1;
+
+          return RefreshIndicator(
+            onRefresh: () => controller.fetchSearchFilterList(
+                controller.selectedFilterType.value),
+            color: AppTheme.primaryTeal,
+            child: isTablet
+                ? _buildGridLayout(controller, crossAxisCount)
+                : _buildListLayout(controller),
+          );
+        },
+      );
+    });
+  }
+
+  Widget _buildListLayout(TrayAssignerController controller) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: controller.filteredTrayList.length,
+      itemBuilder: (context, index) {
+        final item = controller.filteredTrayList[index];
+        return _buildTrayCard(item, controller, index);
+      },
+    );
+  }
+
+  Widget _buildGridLayout(TrayAssignerController controller, int crossAxisCount) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+
+        // Dynamic spacing
+        const spacing = 16.0;
+
+        // ⭐ KEY SOLUTION: Fixed height for cards
+        // Adjust this value based on your tray card content
+        final cardHeight = 290.0;  // Set appropriate height for your card design
+
+        // Calculate available width per card
+        const horizontalPadding = 32.0; // 16 * 2
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final availableWidth = screenWidth - horizontalPadding - totalSpacing;
+        final cardWidth = availableWidth / crossAxisCount;
+
+        // Calculate aspect ratio dynamically based on actual dimensions
+        final childAspectRatio = cardWidth / cardHeight;
+
+        print("Tray - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+        return GridView.builder(
           padding: const EdgeInsets.all(16),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+            childAspectRatio: childAspectRatio,
+          ),
           itemCount: controller.filteredTrayList.length,
           itemBuilder: (context, index) {
             final item = controller.filteredTrayList[index];
             return _buildTrayCard(item, controller, index);
           },
-        ),
-      );
-    });
+        );
+      },
+    );
   }
+
 
   Widget _buildTrayCard(TrayAssignerData item, TrayAssignerController controller, int index) {
     final deliveryType = item.delType ?? '';
@@ -925,10 +999,14 @@ class TrayAssignerScreen extends StatelessWidget {
                           ),
                           child: TextField(
                             controller: controller.getTrayController(itemId),
+                            focusNode: controller.getTrayFocusNode(itemId),
                             textAlign: TextAlign.center,
                             cursorColor: AppTheme.primaryTeal,
                             keyboardType: TextInputType.number,
-                            onChanged: (value) => controller.onTrayNumberChanged(item, value),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(5),
+                            ],
                             onSubmitted: (value) => controller.onTrayNumberSubmitted(item, value),
                             style: const TextStyle(
                               fontSize: 13,

@@ -116,7 +116,9 @@ class PickerScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 6),
                             Obx(() => Text(
-                              controller.selectedLocation.value,
+                              controller.selectedLocation.value == 'ZZZ999'
+                                  ? 'All'
+                                  : controller.selectedLocation.value,
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -249,7 +251,7 @@ class PickerScreen extends StatelessWidget {
             // Tab Content with smooth transition
             Expanded(
               child: Container(
-                margin: const EdgeInsets.only(top: 40),
+                margin: const EdgeInsets.only(top: 20),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(

@@ -123,234 +123,341 @@ class PickerManager extends StatelessWidget {
             );
           }
 
-          // Split Screen Layout - Changed to 70/30
-          return Column(
-            children: [
-              Expanded(
-                child: Row(
-                  children: [
-                    // Left Side - Picker List (30% of screen)
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // List
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              itemCount: controller.pickerList.length,
-                              itemBuilder: (context, index) {
-                                final pickerData = controller.pickerList[index];
-                                return Obx(() => CompactPickerCard(
-                                  pickerData: pickerData,
-                                  index: index,
-                                  isSelected: controller.selectedPickerIndex.value == index,
-                                  onTap: () => controller.onPickerItemSelect(index, pickerData),
-                                ));
-                              },
-                            ),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              final isTablet = constraints.maxWidth >= 600;
+
+              // Dynamic flex values based on device type
+              final leftFlex = isTablet ? 20 : 38;
+              final rightFlex = isTablet ? 80 : 70;
+
+              // Split Screen Layout
+              return Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        // Left Side - Picker List (20% for tablet, 38% for mobile)
+                        Expanded(
+                          flex: leftFlex,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  "${controller.filteredPickerList.length} Pending Deliver${controller.filteredPickerList.length == 1 ? 'y' : 'ies'}",
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blueGrey,
+                                  ),
+                                ),
+                              ),
+                              // Search Bar
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                child: TextField(
+                                  controller: controller.searchController,
+                                  onChanged: controller.filterPickerList,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    hintText: 'Search by tray...',
+                                    suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
+                                        ? IconButton(
+                                      icon: Icon(
+                                        Icons.clear,
+                                        size: 20,
+                                        color: AppTheme.onSurface.withOpacity(0.6),
+                                      ),
+                                      onPressed: controller.clearSearch,
+                                    )
+                                        : const SizedBox()),
+                                    filled: true,
+                                    fillColor: AppTheme.surface.withOpacity(0.3),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    hintStyle: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.onSurface.withOpacity(0.5),
+                                    ),
+                                  ),
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+
+                              // List
+                              Expanded(
+                                child: Obx(() => ListView.builder(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  itemCount: controller.filteredPickerList.length,
+                                  itemBuilder: (context, index) {
+                                    final pickerData = controller.filteredPickerList[index];
+                                    final originalIndex = controller.pickerList.indexOf(pickerData);
+                                    return Obx(() => MangerPickerCard(
+                                      pickerData: pickerData,
+                                      index: originalIndex,
+                                      isSelected: controller.selectedPickerIndex.value == originalIndex,
+                                      onTap: () => controller.onPickerItemSelect(originalIndex, pickerData),
+                                    ));
+                                  },
+                                )),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
 
-                    // Divider
-                    Container(
-                      width: 1,
-                      color: AppTheme.primaryTeal.withOpacity(0.2),
-                    ),
+                        // Divider
+                        Container(
+                          width: 1,
+                          color: AppTheme.primaryTeal.withOpacity(0.2),
+                        ),
 
-                    // Right Side - Details (70% of screen)
-                    Expanded(
-                      flex: 7,
-                      child: Stack( // Changed from Container to Stack
-                        children: [
-                          Container(
-                            color: AppTheme.surface.withOpacity(0.3),
-                            child: Obx(() {
-                              if (controller.selectedPickerIndex.value == -1) {
-                                return const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                        // Right Side - Details (80% for tablet, 70% for mobile)
+                        Expanded(
+                          flex: rightFlex,
+                          child: Stack(
+                            children: [
+                              Container(
+                                color: AppTheme.surface.withOpacity(0.3),
+                                child: Obx(() {
+                                  if (controller.selectedPickerIndex.value == -1) {
+                                    return const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.touch_app,
+                                            size: 48,
+                                            color: AppTheme.primaryTeal,
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Select a picker item',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.onSurface,
+                                            ),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Tap any item from the left\nto view its details',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: AppTheme.onSurface,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  if (controller.isLoadingPickerDetails.value) {
+                                    return const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            color: AppTheme.primaryTeal,
+                                            strokeWidth: 3,
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Loading details...',
+                                            style: TextStyle(
+                                              color: AppTheme.onSurface,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  if (controller.pickerDetails.isEmpty) {
+                                    return const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.inbox_outlined,
+                                            size: 48,
+                                            color: AppTheme.primaryTeal,
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'No details available',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppTheme.onSurface,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }
+
+                                  final selectedPicker = controller.pickerList[controller.selectedPickerIndex.value];
+
+                                  return Column(
                                     children: [
-                                      Icon(
-                                        Icons.touch_app,
-                                        size: 48,
-                                        color: AppTheme.primaryTeal,
-                                      ),
-                                      SizedBox(height: 16),
-                                      Text(
-                                        'Select a picker item',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.onSurface,
-                                        ),
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Tap any item from the left\nto view its details',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppTheme.onSurface,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-
-                              if (controller.isLoadingPickerDetails.value) {
-                                return const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CircularProgressIndicator(
-                                        color: AppTheme.primaryTeal,
-                                        strokeWidth: 3,
-                                      ),
-                                      SizedBox(height: 16),
-                                      Text(
-                                        'Loading details...',
-                                        style: TextStyle(
-                                          color: AppTheme.onSurface,
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-
-                              if (controller.pickerDetails.isEmpty) {
-                                return const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.inbox_outlined,
-                                        size: 48,
-                                        color: AppTheme.primaryTeal,
-                                      ),
-                                      SizedBox(height: 16),
-                                      Text(
-                                        'No details available',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.onSurface,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-
-                              final selectedPicker = controller.pickerList[controller.selectedPickerIndex.value];
-
-                              return Column(
-                                children: [
-                                  // Details Header
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-                                    color: Colors.blueGrey.withOpacity(0.5),
-                                    child: Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.inventory_2,
-                                          color: Colors.white,
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'Tray NO: ${selectedPicker.trayNo ?? 'N/A'}',
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                              Row(
+                                      // Details Header
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                                        color: Colors.blueGrey.withOpacity(0.5),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.inventory_2,
+                                              color: Colors.white,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    'Items: ${controller.pickerDetails.length}',
+                                                    'Tray NO: ${selectedPicker.trayNo ?? 'N/A'}',
                                                     style: const TextStyle(
-                                                      fontSize: 12,
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w700,
                                                       color: Colors.white,
                                                     ),
                                                   ),
-                                                  const SizedBox(width: 16),
-                                                  Text(
-                                                    'Selected: ${controller.selectedDetailIds.length}',
-                                                    style: const TextStyle(
-                                                      fontSize: 12,
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        'Items: ${controller.pickerDetails.length}',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 16),
+                                                      Text(
+                                                        'Selected: ${controller.selectedDetailIds.length}',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
                                                 ],
                                               ),
-                                            ],
-                                          ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                  // Details List
-                                  Expanded(
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.all(8),
-                                      itemCount: controller.pickerDetails.length,
-                                      itemBuilder: (context, index) {
-                                        final detail = controller.pickerDetails[index];
-                                        return Obx(() => CompactDetailCard(
-                                          detail: detail,
-                                          index: index,
-                                          onSelectionChanged: controller.onDetailSelectionChanged,
-                                          isSelected: controller.selectedDetailIds.contains(detail.itemDetailId.toString()),
-                                          onTap: controller.showItemStockDetail,
-                                          onFetchStockDetail: controller.fetchStockDetail,
-                                          stockDetailList: controller.stockDetailList,
-                                        ));
-                                      },
-                                    ),
-                                  ),
-                                  // Removed FloatingSubmitButton from here
-                                ],
-                              );
-                            }),
+                                      ),
+                                      // Details List - Grid for tablet, List for mobile
+                                      Expanded(
+                                        child:  _buildDetailList(controller),
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ),
+                              FloatingSubmitButton(controller: controller),
+                            ],
                           ),
-                          FloatingSubmitButton(controller: controller), // Now properly positioned in Stack
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           );
         }),
       ),
     );
   }
+
+// Detail List for Mobile
+  Widget _buildDetailList(PickerManagercontroller controller) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: controller.pickerDetails.length,
+      itemBuilder: (context, index) {
+        final detail = controller.pickerDetails[index];
+        return Obx(() => CompactDetailCard(
+          detail: detail,
+          index: index,
+          onSelectionChanged: controller.onDetailSelectionChanged,
+          isSelected: controller.selectedDetailIds.contains("${detail.itemDetailId.toString()}${index}"),
+          onTap: controller.showItemStockDetail,
+          onFetchStockDetail: controller.fetchStockDetail,
+          stockDetailList: controller.stockDetailList,
+        ));
+      },
+    );
+  }
+
+// Detail Grid for Tablet
+  Widget _buildDetailGrid(PickerManagercontroller controller, double availableWidth) {
+    // Calculate columns based on available width (now 80% of screen)
+    final crossAxisCount = availableWidth >= 1000 ? 3 : 2;
+
+    // Dynamic spacing
+    const spacing = 12.0;
+
+    // ⭐ KEY SOLUTION: Fixed height for cards
+    // Adjust this value based on your CompactDetailCard content
+    final cardHeight = 210.0;  // Set appropriate height for your card design
+
+    // Calculate available width per card
+    const horizontalPadding = 16.0; // 8 * 2
+    final totalSpacing = spacing * (crossAxisCount - 1);
+    final cardAvailableWidth = availableWidth - horizontalPadding - totalSpacing;
+    final cardWidth = cardAvailableWidth / crossAxisCount;
+
+    // Calculate aspect ratio dynamically based on actual dimensions
+    final childAspectRatio = cardWidth / cardHeight;
+
+    print("Picker Manager Detail - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: spacing,
+        mainAxisSpacing: spacing,
+        childAspectRatio: childAspectRatio,
+      ),
+      itemCount: controller.pickerDetails.length,
+      itemBuilder: (context, index) {
+        final detail = controller.pickerDetails[index];
+        return Obx(() => CompactDetailCard(
+          detail: detail,
+          index: index,
+          onSelectionChanged: controller.onDetailSelectionChanged,
+          isSelected: controller.selectedDetailIds.contains("${detail.itemDetailId.toString()}${index}"),
+          onTap: controller.showItemStockDetail,
+          onFetchStockDetail: controller.fetchStockDetail,
+          stockDetailList: controller.stockDetailList,
+        ));
+      },
+    );
+  }
 }
 
 
-
-class CompactPickerCard extends StatefulWidget {
+class MangerPickerCard extends StatefulWidget {
   final PickerData pickerData;
   final int index;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const CompactPickerCard({
+  const MangerPickerCard({
     Key? key,
     required this.pickerData,
     required this.index,
@@ -359,10 +466,10 @@ class CompactPickerCard extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<CompactPickerCard> createState() => _CompactPickerCardState();
+  State<MangerPickerCard> createState() => _MangerPickerCardState();
 }
 
-class _CompactPickerCardState extends State<CompactPickerCard>
+class _MangerPickerCardState extends State<MangerPickerCard>
     with SingleTickerProviderStateMixin {
   bool _isExpanded = false;
   late AnimationController _animationController;
@@ -387,30 +494,44 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     super.dispose();
   }
 
-  Color _getBackgroundColor() {
+  Color _getIconColor() {
     final delType = widget.pickerData.delType?.toUpperCase() ?? '';
 
     switch (delType) {
       case 'URGENT':
-        return const Color(0xFFF50E0E); // Red
+        return const Color(0xFFFF6B6B); // Coral Red - warm, attention-grabbing
       case 'PICK-UP':
-        return const Color(0xFF15EE81); // Green
+        return const Color(0xFF4ECDC4); // Turquoise Green - fresh, calming
       case 'DELIVERY':
-        return const Color(0xFFFFB266); // Orange
+        return const Color(0xFFFFBE0B); // Vibrant Amber - energetic, warm
       case 'MEDREP':
-        return const Color(0xFFEAF207); // Yellow
+        return const Color(0xFFFB8500); // Burnt Orange - professional, distinctive
       case 'COD':
-        return const Color(0xFFFF99FF); // Pink
+        return const Color(0xFF8367C7); // Lavender Purple - elegant, modern
       case 'OUTSTATION':
-        return const Color(0xFF99FFFF); // Sky Blue
+        return const Color(0xFF219EBC); // Ocean Blue - trustworthy, deep
       default:
-        return Colors.white; // Default white
+        return const Color(0xFF457B9D); // Steel Blue - sophisticated neutral
     }
   }
 
-  Color _getTextColor() {
-    final delType = widget.pickerData.delType?.toUpperCase() ?? '';
-    return delType == 'URGENT' ? Colors.white : Colors.black;
+  Color _getGradientColor() {
+    final baseColor = _getIconColor();
+    // Create a slightly darker/lighter gradient color
+    return Color.fromARGB(
+      baseColor.alpha,
+      (baseColor.red * 0.8).round(),
+      (baseColor.green * 0.9).round(),
+      (baseColor.blue * 1.1).round().clamp(0, 255),
+    );
+  }
+
+  // Get card background gradient colors using glassmorphic style
+  List<Color> _getCardGradientColors() {
+    return [
+      Colors.white.withOpacity(0.9),
+      Colors.white.withOpacity(0.7),
+    ];
   }
 
   List<String> _getTrayNumbers() {
@@ -442,21 +563,25 @@ class _CompactPickerCardState extends State<CompactPickerCard>
 
   Widget _buildTraySection() {
     final trayNumbers = _getTrayNumbers();
+    final iconColor = _getIconColor();
+    final gradientColor = _getGradientColor();
 
     if (trayNumbers.isEmpty) {
-      return _buildSingleTrayRow('N/A', false);
+      return _buildSingleTrayRow('N/A', false, iconColor, gradientColor);
     }
 
     if (trayNumbers.length == 1) {
-      return _buildSingleTrayRow(trayNumbers.first, false);
+      return _buildSingleTrayRow(trayNumbers.first, false, iconColor, gradientColor);
     }
 
-    // Multiple trays - show first one and expand button
+    // Multiple trays - show first one with count, no arrow in main row
     return Column(
       children: [
         _buildSingleTrayRow(
-          '${trayNumbers.first} ${trayNumbers.length > 1 ? '(+${trayNumbers.length - 1})' : ''}',
+          '${trayNumbers.first} (+${trayNumbers.length - 1})',
           true,
+          iconColor,
+          gradientColor,
         ),
         AnimatedBuilder(
           animation: _expandAnimation,
@@ -472,39 +597,113 @@ class _CompactPickerCardState extends State<CompactPickerCard>
           child: Container(
             width: double.infinity,
             margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.amberGold.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.8),
+                  Colors.white.withOpacity(0.6),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: AppTheme.amberGold.withOpacity(0.3),
+                color: Colors.white.withOpacity(0.7),
                 width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: iconColor.withOpacity(0.2),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: trayNumbers.map((trayNo) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.amberGold.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: AppTheme.amberGold.withOpacity(0.5),
-                      width: 0.5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Show collapse button at top of expanded section
+                GestureDetector(
+                  onTap: _toggleExpansion,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedRotation(
+                          turns: _isExpanded ? 0.5 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [iconColor, gradientColor],
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.keyboard_arrow_up,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Trays',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    trayNo,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
-                    ),
-                  ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(height: 6),
+                // All tray numbers
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: trayNumbers.map((trayNo) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            iconColor.withOpacity(0.8),
+                            gradientColor.withOpacity(0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: iconColor.withOpacity(0.2),
+                            blurRadius: 4,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        trayNo,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
           ),
         ),
@@ -512,48 +711,76 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     );
   }
 
-  Widget _buildSingleTrayRow(String displayText, bool canExpand) {
+  Widget _buildSingleTrayRow(String displayText, bool canExpand, Color iconColor, Color gradientColor) {
     return GestureDetector(
       onTap: canExpand ? _toggleExpansion : null,
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  Icons.inventory_2,
-                  size: 13,
-                  color: AppTheme.amberGold,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.white.withOpacity(0.8),
+              Colors.white.withOpacity(0.6),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.7),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: iconColor.withOpacity(0.15),
+              blurRadius: 4,
+              spreadRadius: 0,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [iconColor, gradientColor],
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    displayText,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (canExpand) ...[
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _isExpanded ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 16,
-                      color: AppTheme.amberGold,
-                    ),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withOpacity(0.3),
+                    blurRadius: 4,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 1),
                   ),
                 ],
-              ],
+              ),
+              child: const Icon(
+                Icons.inventory_2,
+                size: 12,
+                color: Colors.white,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                displayText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -563,7 +790,7 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return TrayManagementDialog(        // <-- This is where TrayManagementDialog is called
+        return TrayManagementDialog(
           pickerData: widget.pickerData,
           onTrayUpdated: () {
             // Refresh the picker list to show updated tray numbers
@@ -574,128 +801,146 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     );
   }
 
+  Color _getBorderColor() {
+    if (widget.isSelected) {
+      final delTypeColor = _getIconColor();
+      return delTypeColor.withOpacity(0.6); // Softer border for glassmorphic effect
+    }
+    return Colors.white.withOpacity(0.8);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final iconColor = _getIconColor();
+    final gradientColor = _getGradientColor();
+
     return GestureDetector(
       onLongPress: () => _showTrayManagementDialog(),
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [_getBackgroundColor().withOpacity(0.05), _getBackgroundColor().withOpacity(0.15)],
+            colors: _getCardGradientColors(),
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: widget.isSelected
-                ? AppTheme.primaryTeal
-                : AppTheme.shadowColor.withOpacity(0.1),
-            width: widget.isSelected ? 2 : 1,
+            color: _getBorderColor(),
+            width: widget.isSelected ? 2 : 1.5,
           ),
-          boxShadow: widget.isSelected
-              ? [
+          boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryTeal.withOpacity(0.2),
-              blurRadius: 8,
-              spreadRadius: 1,
-              offset: const Offset(0, 2),
-            ),
-          ]
-              : [
-            BoxShadow(
-              color: AppTheme.shadowColor.withOpacity(0.05),
-              blurRadius: 4,
+              color: iconColor.withOpacity(0.25),
+              blurRadius: widget.isSelected ? 15 : 10,
               spreadRadius: 0,
-              offset: const Offset(0, 1),
+              offset: const Offset(0, 5),
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           child: InkWell(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             onTap: widget.onTap,
-            splashColor: AppTheme.primaryTeal.withOpacity(0.1),
-            highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
+            splashColor: iconColor.withOpacity(0.1),
+            highlightColor: iconColor.withOpacity(0.05),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Selection indicator and Invoice Number with DelType Color
+                  // 1. Tray section at the top
+                  _buildTraySection(),
+
+                  const SizedBox(height: 12),
+
+                  // 2. Invoice Number
                   Row(
                     children: [
-                      // Selection indicator
-                      if (widget.isSelected)
-                        Container(
-                          width: 4,
-                          height: 20,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryTeal,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      if (widget.isSelected) const SizedBox(width: 8),
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getBackgroundColor(),
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: widget.isSelected
-                                ? [
-                              BoxShadow(
-                                color: _getBackgroundColor().withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                                : [],
+                        child: Text(
+                          widget.pickerData.invNo ?? 'N/A',
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
                           ),
-                          child: Text(
-                            widget.pickerData.invNo ?? 'N/A',
-                            style: TextStyle(
-                              color: _getTextColor(),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
-                  // Tray section with expand/collapse functionality
-                  _buildTraySection(),
-
-                  const SizedBox(height: 4),
-
-                  // Time
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 12,
-                        color: AppTheme.lightTeal,
+                  // 3. Time at the bottom
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Colors.white.withOpacity(0.8),
+                          Colors.white.withOpacity(0.6),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        widget.pickerData.dTime ?? 'N/A',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.onSurface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.7),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: iconColor.withOpacity(0.15),
+                          blurRadius: 4,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [iconColor, gradientColor],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(
+                                color: iconColor.withOpacity(0.3),
+                                blurRadius: 4,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.access_time,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          widget.pickerData.iTime ?? 'N/A',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -779,8 +1024,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                 widget.detail.pNote = '';
               });
             }
-            widget.onSelectionChanged(
-                widget.detail.itemDetailId.toString(), !widget.isSelected);
+            widget.onSelectionChanged("${widget.detail.itemDetailId.toString()}${widget.index}", !widget.isSelected);
+
           },
           splashColor: AppTheme.primaryTeal.withOpacity(0.1),
           highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
@@ -924,6 +1169,61 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                 const SizedBox(height: 8),
 
                 // Manufacture and Batch details
+                if(widget.detail.ccp == 1)
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.amberGold,
+                          AppTheme.amberGold.withOpacity(0.8),
+                          AppTheme.amberGold,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.amberGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          // Icon on the left
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Icon(
+                              Icons.comment_outlined,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+
+                          // Marquee text
+                          Expanded(
+                            child: _MarqueeText(
+                              text: 'Picked with coolant.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                const SizedBox(height: 8),
+
+                // Manufacture and Batch details
                 Row(
                   children: [
                     Expanded(
@@ -1059,7 +1359,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
     bool showReviewField = false;
     String reviewHint = '';
     bool isLoading = false;
-    List<String> batchNumbers = [];
+    List<String> batchNumbers = []; // This will be populated from the API
 
     showDialog(
       context: context,
@@ -1074,14 +1374,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
               elevation: 12,
               child: Container(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery
-                      .of(context)
-                      .size
-                      .height * 0.85,
-                  maxWidth: MediaQuery
-                      .of(context)
-                      .size
-                      .width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
@@ -1090,11 +1384,10 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header section
+                    // Header section (keep existing)
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: AppTheme.chartGradient,
@@ -1170,14 +1463,14 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       ),
                     ),
 
-                    // Content
-                    Flexible(
+                    // Scrollable Content
+                    Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Item Details Card
+                            // Item Details Card (keep existing)
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(16),
@@ -1197,8 +1490,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppTheme.primaryTeal.withOpacity(
-                                        0.1),
+                                    color: AppTheme.primaryTeal.withOpacity(0.1),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -1207,40 +1499,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primaryTeal
-                                              .withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                              8),
-                                        ),
-                                        child: Icon(
-                                          Icons.inventory_2,
-                                          color: AppTheme.primaryTeal,
-                                          size: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          'Item Information',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.onSurface,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
                                   Text(
-                                    '${widget.detail.itemName ??
-                                        'Unknown Item'} ${widget.detail
-                                        .packing ?? ''}',
+                                    '${widget.detail.itemName ?? 'Unknown Item'} ${widget.detail.packing ?? ''}',
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
@@ -1252,8 +1512,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                     'B: ${widget.detail.batchNo ?? 'N/A'}',
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: AppTheme.onSurface.withOpacity(
-                                          0.8),
+                                      color: AppTheme.onSurface.withOpacity(0.8),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -1262,21 +1521,16 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                     'E: ${widget.detail.sExpDate ?? 'N/A'}',
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: AppTheme.onSurface.withOpacity(
-                                          0.8),
+                                      color: AppTheme.onSurface.withOpacity(0.8),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'M: ${widget.detail.mrp != null
-                                        ? '₹${widget.detail.mrp!
-                                        .toStringAsFixed(2)}'
-                                        : 'N/A'}',
+                                    'M: ${widget.detail.mrp != null ? '₹${widget.detail.mrp!.toStringAsFixed(2)}' : 'N/A'}',
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: AppTheme.onSurface.withOpacity(
-                                          0.8),
+                                      color: AppTheme.onSurface.withOpacity(0.8),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -1292,8 +1546,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                 Container(
                                   padding: const EdgeInsets.all(6),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.primaryTeal.withOpacity(
-                                        0.1),
+                                    color: AppTheme.primaryTeal.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Icon(
@@ -1345,16 +1598,18 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                         await widget.onFetchStockDetail!(
                                           widget.detail.itemDetailId ?? 0,
                                           widget.detail.itemName ?? '',
-                                          false,
+                                          false, // Don't show dialog, just fetch data
                                         );
 
+                                        // After API call, update the local batchNumbers list
                                         setState(() {
                                           batchNumbers = widget.stockDetailList
-                                              .map((stock) => "${stock
-                                              ?.batchNo} / ₹${stock?.mrp}")
+                                              .map((stock) => "${stock.batchNo} / ₹${stock.mrp}")
                                               .toList();
                                           isLoading = false;
                                         });
+
+                                        print("🔵 Updated batchNumbers in dialog: $batchNumbers");
                                       } else {
                                         setState(() {
                                           isLoading = false;
@@ -1363,8 +1618,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                     },
                                   ),
 
-                                  if (showBatchList &&
-                                      selectedReason == 'batch_change')
+                                  if (showBatchList && selectedReason == 'batch_change')
                                     isLoading
                                         ? Container(
                                       padding: const EdgeInsets.all(20),
@@ -1377,8 +1631,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                           Text(
                                             'Loading batch data...',
                                             style: TextStyle(
-                                              color: AppTheme.onSurface
-                                                  .withOpacity(0.6),
+                                              color: AppTheme.onSurface.withOpacity(0.6),
                                               fontSize: 12,
                                             ),
                                           ),
@@ -1390,9 +1643,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                         selectedBatch,
                                         setState,
                                         reviewController,
-                                            (value) =>
-                                            setState(() =>
-                                            selectedBatch = value)),
+                                            (value) => setState(() => selectedBatch = value)  // Pass the callback
+                                    ),
 
                                   _buildDivider(),
 
@@ -1441,8 +1693,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                         selectedReason = value;
                                         showBatchList = false;
                                         showReviewField = true;
-                                        reviewHint =
-                                        'Enter Damage / Breakage Qty';
+                                        reviewHint = 'Enter Damage / Breakage Qty';
                                         reviewController.clear();
                                       });
                                     },
@@ -1460,8 +1711,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                         selectedReason = value;
                                         showBatchList = false;
                                         showReviewField = true;
-                                        reviewHint =
-                                        'Enter Batch and Quantity.\nFormat: batch no - qty, batch no - qty';
+                                        reviewHint = 'Enter Batch and Quantity.\nFormat: batch no - qty, batch no - qty';
                                         reviewController.clear();
                                       });
                                     },
@@ -1486,54 +1736,76 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                 ],
                               ),
                             ),
-
-                            // Review Text Field
-                            if (showReviewField) ...[
-                              const SizedBox(height: 20),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme.primaryTeal.withOpacity(
-                                        0.3),
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: reviewController,
-                                  decoration: InputDecoration(
-                                    hintText: reviewHint,
-                                    hintStyle: TextStyle(
-                                      color: AppTheme.onSurface.withOpacity(
-                                          0.6),
-                                      fontSize: 14,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    filled: true,
-                                    fillColor: AppTheme.primaryTeal.withOpacity(
-                                        0.05),
-                                    contentPadding: const EdgeInsets.all(16),
-                                    prefixIcon: Icon(
-                                      Icons.edit_note,
-                                      color: AppTheme.primaryTeal,
-                                    ),
-                                  ),
-                                  maxLines: selectedReason == 'multiple'
-                                      ? 3
-                                      : 1,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
                     ),
 
-                    // Action Buttons
+                    // Fixed Review Text Field - Always visible at bottom when shown
+                    if (showReviewField)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(20),
+                            bottomRight: Radius.circular(20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, -2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Divider
+                            Container(
+                              height: 1,
+                              width: double.infinity,
+                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                            ),
+                            const SizedBox(height: 20),
+                            // Review Text Field
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppTheme.primaryTeal.withOpacity(0.3),
+                                ),
+                              ),
+                              child: TextField(
+                                controller: reviewController,
+                                decoration: InputDecoration(
+                                  hintText: reviewHint,
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.onSurface.withOpacity(0.6),
+                                    fontSize: 14,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppTheme.primaryTeal.withOpacity(0.05),
+                                  contentPadding: const EdgeInsets.all(16),
+                                  prefixIcon: Icon(
+                                    Icons.edit_note,
+                                    color: AppTheme.primaryTeal,
+                                  ),
+                                ),
+                                maxLines: selectedReason == 'multiple' ? 3 : 1,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    // Action Buttons (keep existing)
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
@@ -1549,14 +1821,11 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                             child: OutlinedButton(
                               onPressed: () => Navigator.of(context).pop(),
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                    color: AppTheme.primaryTeal.withOpacity(
-                                        0.5)),
+                                side: BorderSide(color: AppTheme.primaryTeal.withOpacity(0.5)),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
                               child: Text(
                                 'Cancel',
@@ -1571,23 +1840,20 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                           Expanded(
                             flex: 2,
                             child: ElevatedButton(
-                              onPressed: () =>
-                                  _submitReview(
-                                    context,
-                                    selectedReason,
-                                    reviewController.text,
-                                  ),
+                              onPressed: () => _submitReview(
+                                context,
+                                selectedReason,
+                                reviewController.text,
+                              ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.primaryTeal,
                                 foregroundColor: Colors.white,
                                 elevation: 4,
-                                shadowColor: AppTheme.primaryTeal.withOpacity(
-                                    0.4),
+                                shadowColor: AppTheme.primaryTeal.withOpacity(0.4),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1885,6 +2151,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
     );
   }
 }
+
+
 class TrayManagementDialog extends StatefulWidget {
   final PickerData pickerData;
   final VoidCallback onTrayUpdated;
@@ -2570,4 +2838,117 @@ class FloatingSubmitButton extends StatelessWidget {
     });
   }
 }
+
+
+class _MarqueeText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final double speed; // pixels per second
+
+  const _MarqueeText({
+    required this.text,
+    required this.style,
+    this.speed = 30.0,
+  });
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText>
+    with SingleTickerProviderStateMixin {
+  late ScrollController _scrollController;
+  late AnimationController _animationController;
+  double _textWidth = 0;
+  double _containerWidth = 0;
+  bool _shouldScroll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfScrollNeeded();
+    });
+  }
+
+  void _checkIfScrollNeeded() {
+    final textPainter = TextPainter(
+      text: TextSpan(text: widget.text, style: widget.style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    _textWidth = textPainter.width;
+    _containerWidth = context.size?.width ?? 0;
+
+    if (_textWidth > _containerWidth) {
+      setState(() {
+        _shouldScroll = true;
+      });
+      _startScrolling();
+    }
+  }
+
+  void _startScrolling() {
+    if (!_shouldScroll) return;
+
+    final duration = Duration(
+      milliseconds: ((_textWidth + _containerWidth) / widget.speed * 1000).round(),
+    );
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        _scrollController
+            .animateTo(
+          _textWidth + _containerWidth,
+          duration: duration,
+          curve: Curves.linear,
+        )
+            .then((_) {
+          if (mounted) {
+            _scrollController.jumpTo(0);
+            _startScrolling();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shouldScroll) {
+      return Text(
+        widget.text,
+        style: widget.style,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      controller: _scrollController,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Row(
+        children: [
+          Text(widget.text, style: widget.style),
+          SizedBox(width: _containerWidth),
+          Text(widget.text, style: widget.style),
+        ],
+      ),
+    );
+  }
+}
+
 

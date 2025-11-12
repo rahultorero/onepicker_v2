@@ -263,25 +263,55 @@ class MergerScreen extends StatelessWidget {
   }
 
   Widget _buildMergerGrid(MergerController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 1.1,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: controller.filteredMergerList.length,
-        itemBuilder: (context, index) {
-          final mergerData = controller.filteredMergerList[index];
-          return CompactMergerCard(
-            mergerData: mergerData,
-            index: index,
-            onTap: () => controller.onMergerItemTap(mergerData),
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final isTablet = screenWidth >= 600;
+
+        // Calculate columns based on screen size
+        final crossAxisCount = isTablet
+            ? (screenWidth >= 1000 ? 6 : 5)  // 6 columns for large tablets, 5 for small tablets
+            : 3;  // 3 columns for mobile
+
+        // Dynamic spacing
+        final spacing = isTablet ? 12.0 : 8.0;
+
+        // ⭐ KEY SOLUTION: Fixed height for cards
+        // Adjust this value based on your CompactMergerCard content
+        final cardHeight = isTablet ?110.0 : 110.0;
+
+        // Calculate available width per card
+        final horizontalPadding = 24.0; // 12 * 2
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final availableWidth = screenWidth - horizontalPadding - totalSpacing;
+        final cardWidth = availableWidth / crossAxisCount;
+
+        // Calculate aspect ratio dynamically based on actual dimensions
+        final childAspectRatio = cardWidth / cardHeight;
+
+        print("Merger - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+            ),
+            itemCount: controller.filteredMergerList.length,
+            itemBuilder: (context, index) {
+              final mergerData = controller.filteredMergerList[index];
+              return CompactMergerCard(
+                mergerData: mergerData,
+                index: index,
+                onTap: () => controller.onMergerItemTap(mergerData),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

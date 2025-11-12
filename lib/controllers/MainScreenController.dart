@@ -3,8 +3,15 @@ import 'package:get/get.dart';
 import 'dart:math' as math;
 
 
+import '../model/LoginModel.dart';
+import '../services/services.dart'; // Import your login model
+
 class MainScreenController extends GetxController with GetTickerProviderStateMixin {
   var currentIndex = 0.obs;
+
+  // User data
+  Rx<LoginModel?> userData = Rx<LoginModel?>(null);
+  var isLoading = true.obs;
 
   // Animation controllers
   late AnimationController backgroundController;
@@ -27,8 +34,32 @@ class MainScreenController extends GetxController with GetTickerProviderStateMix
   @override
   void onInit() {
     super.onInit();
+    loadUserData();
     setupAnimations();
   }
+
+  // Load user data from API
+  Future<void> loadUserData() async {
+    try {
+      isLoading.value = true;
+      final data = await ApiConfig.getLoginData();
+      userData.value = data;
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Helper getters for easy access
+  bool get isAdmin => userData.value?.response?.admin ?? false;
+  bool get isTray => userData.value?.response?.tray ?? false;
+  bool get isPicker => userData.value?.response?.picker ?? false;
+  bool get isChecker => userData.value?.response?.checker ?? false;
+  bool get isPacker => userData.value?.response?.packer ?? false;
+  bool get isTrayPick => userData.value?.response?.trayPick ?? false;
+  bool get isPickMan => userData.value?.response?.pickMan ?? false;
+  String get userName => userData.value?.response?.eName ?? 'User';
 
   void setupAnimations() {
     backgroundController = AnimationController(

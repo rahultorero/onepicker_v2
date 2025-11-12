@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:math' as math;
@@ -11,6 +13,7 @@ import 'package:onepicker/view/CheckerScreen.dart';
 import 'package:onepicker/view/MergerScreen.dart';
 import 'package:onepicker/view/PackerScreen.dart';
 import 'package:onepicker/view/PickerManager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../bottomsheets/LocationSelectionBottomSheet.dart';
@@ -22,12 +25,20 @@ import '../theme/AppTheme.dart';
 import '../view/AdminScreen.dart';
 import '../view/PickerScreen.dart';
 import '../view/TrayAssignerScreen.dart';
+import '../widget/AppLoader.dart';
 
 class HomeScreenController extends GetxController with GetTickerProviderStateMixin {
   late AnimationController cardController;
   late AnimationController headerController;
-  late List<Animation<Offset>> cardAnimations;
-  late Animation<double> headerAnimation;
+
+  // Edit form controllers
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController currentPasswordController = TextEditingController();
+  final TextEditingController newPasswordController = TextEditingController();
+
+// Variable to track if current password is validated
+  var isPasswordValidated = false.obs;
+
 
   var userName = ''.obs;
   var notificationCount = 3.obs;
@@ -45,110 +56,139 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
   static String? selectCamera = '';
 
 
-  final List<Map<String, dynamic>> quickServices = [
-    {
-      'title': 'Admin',
-      'subtitle': 'Manage users, roles & settings',
-      'icon': Icons.computer_sharp,
-      'color': AppTheme.primaryTeal,
-      'gradient': AppTheme.primaryGradient,
-      'isNew': false,
-    },
-    {
-      'title': 'Tray Assigner',
-      'subtitle': 'Assign trays for seamless order flow',
-      'icon': Icons.assignment_turned_in_outlined,
-      'color': AppTheme.lavender,
-      'gradient': AppTheme.lavenderGradient,
-      'isNew': false,
-    },
-    {
-      'title': 'Picker',
-      'subtitle': 'Pick items quickly & accurately',
-      'icon': Icons.delivery_dining_outlined,
-      'color': AppTheme.amberGold,
-      'gradient': AppTheme.bronzeGradient,
-      'isNew': false,
-    },
-    {
-      'title': 'Picker Manager',
-      'subtitle': 'Monitor and manage picking process',
-      'icon': Icons.manage_accounts_rounded,
-      'color': AppTheme.primaryTeal,
-      'gradient': AppTheme.coolGradient,
-      'isNew': false,
-    },
-    {
-      'title': 'Checker',
-      'subtitle': 'Verify items before dispatch',
-      'icon': Icons.fact_check_outlined,
-      'color': AppTheme.accentGreen,
-      'gradient': AppTheme.accentGradient,
-      'isNew': false,
-    },
-    {
-      'title': 'Packer',
-      'subtitle': 'Pack orders securely & efficiently',
-      'icon': Icons.backpack,
-      'color': const Color(0xFF199A8E),
-      'gradient': AppTheme.primaryGradient,
-      'isNew': false,
-    },
-    {
-      'title': 'Merger',
-      'subtitle': 'Combine multiple orders into one',
-      'icon': Icons.merge_type_rounded,
-      'color': Colors.deepPurple,
-      'gradient': AppTheme.lavenderGradient,
-      'isNew': false,
-    },
-  ];
+
+  var quickServices = <Map<String, dynamic>>[].obs; // RxList
 
   @override
   void onInit() {
     super.onInit();
-    setupAnimations();
+    _loadServices(); // call here
   }
 
-  void setupAnimations() {
-    cardController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+  Future<void> _loadServices() async {
+    await _setQuickServices();   // fetch and build list
 
-    headerController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    cardAnimations = List.generate(
-      quickServices.length,
-          (index) => Tween<Offset>(
-        begin: const Offset(0.0, 0.5),
-        end: Offset.zero,
-      ).animate(
-        CurvedAnimation(
-          parent: cardController,
-          curve: Interval(
-            index * 0.1,
-            0.8 + index * 0.1,
-            curve: Curves.easeOutCubic,
-          ),
-        ),
-      ),
-    );
-
-    headerAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: headerController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    headerController.forward();
-    cardController.forward();
+    final userData = await ApiConfig.getLoginData();
+    usernameController.text = userData!.response!.eCode!;
   }
+
+  Future<void> _setQuickServices() async {
+    quickServices.clear();
+
+    final userData = await ApiConfig.getLoginData();
+    final user = userData!.response!;
+
+    // Admin
+    if (user.admin == true) {
+      quickServices.add({
+        'title': 'Admin',
+        'subtitle': 'Manage users, roles & settings',
+        'icon': Icons.computer_sharp,
+        'color': AppTheme.primaryTeal,
+        'gradient': AppTheme.primaryGradient,
+        'isNew': false,
+      });
+
+    }
+
+    // Tray Assigner
+    if (user.trayPick == true) {
+      quickServices.add({
+        'title': 'Tray Assigner',
+        'subtitle': 'Assign trays for seamless order flow',
+        'icon': Icons.assignment_turned_in_outlined,
+        'color': AppTheme.lavender,
+        'gradient': AppTheme.lavenderGradient,
+        'isNew': false,
+      });
+    }
+
+    // Picker
+    if (user.picker == true) {
+      quickServices.add({
+        'title': 'Picker',
+        'subtitle': 'Pick items quickly & accurately',
+        'icon': Icons.delivery_dining_outlined,
+        'color': AppTheme.amberGold,
+        'gradient': AppTheme.bronzeGradient,
+        'isNew': false,
+      });
+    }
+
+    // Merger
+    final ETrayMerger = await ApiConfig.getSyn('ETrayMerger');
+    if (ETrayMerger != 0) {
+      if (user.tray == true) {
+        quickServices.add({
+          'title': 'Merger',
+          'subtitle': 'Combine multiple orders into one',
+          'icon': Icons.merge_type_rounded,
+          'color': Colors.deepPurple,
+          'gradient': AppTheme.lavenderGradient,
+          'isNew': false,
+        });
+      }
+    }
+
+    // Picker Manager
+    if (user.pickMan == true) {
+      final workingWithPickupManager = await ApiConfig.getSyn('WorkingWithPickupManager');
+      if (workingWithPickupManager != 0) {
+        quickServices.add({
+          'title': 'Picker Manager',
+          'subtitle': 'Monitor and manage picking process',
+          'icon': Icons.manage_accounts_rounded,
+          'color': AppTheme.primaryTeal,
+          'gradient': AppTheme.coolGradient,
+          'isNew': false,
+        });
+      }
+    }
+
+
+
+    // Checker & Packer
+    final EPCSeprate = await ApiConfig.getSyn('EPCSeprate');
+    if (EPCSeprate == 0) {
+      // Only Checker
+      if (user.checker == true) {
+        quickServices.add({
+          'title': 'Checker',
+          'subtitle': 'Verify items before dispatch',
+          'icon': Icons.fact_check_outlined,
+          'color': AppTheme.accentGreen,
+          'gradient': AppTheme.accentGradient,
+          'isNew': false,
+        });
+      }
+    } else {
+      // Both Checker and Packer
+      if (user.checker == true) {
+        quickServices.add({
+          'title': 'Checker',
+          'subtitle': 'Verify items before dispatch',
+          'icon': Icons.fact_check_outlined,
+          'color': AppTheme.accentGreen,
+          'gradient': AppTheme.accentGradient,
+          'isNew': false,
+        });
+      }
+
+      if (user.packer == true) {
+        quickServices.add({
+          'title': 'Packer',
+          'subtitle': 'Pack orders securely & efficiently',
+          'icon': Icons.backpack,
+          'color': const Color(0xFF199A8E),
+          'gradient': AppTheme.primaryGradient,
+          'isNew': false,
+        });
+      }
+    }
+
+    print("✅ Quick services loaded: ${quickServices.length}");
+  }
+
 
   // API call to fetch locations using HTTP
   Future<void> fetchLocations() async {
@@ -291,6 +331,53 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
     }
   }
 
+  Future<void> logout() async {
+    try {
+      final apiConfig = await ApiConfig.load();
+      final prefs = await SharedPreferences.getInstance();
+      String? sessionId = prefs.getString('session_id');
+
+      if (sessionId == null) {
+        print("Session ID not found");
+        return;
+      }
+
+      final response = await http
+          .post(
+        Uri.parse('${apiConfig.baseUrl}logout'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'SessionId': sessionId,
+        }),
+      )
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException("Request timed out after 10 seconds");
+      });
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print("Logout response: $responseData");
+        print("session Id $sessionId");
+
+        // Clear session data from SharedPreferences
+        await prefs.remove('session_id');
+
+        // Optionally clear other login data
+        // await prefs.remove('username');
+        // await prefs.remove('password');
+        // await prefs.setBool('remember_me', false);
+
+        print("Logout successful");
+      } else {
+        print("Logout failed with status: ${response.statusCode}");
+      }
+    } on TimeoutException {
+      print("Logout request timed out");
+    } catch (e) {
+      print("Logout error: $e");
+    }
+  }
+
 
   // Handle service tap
   void onServiceTap(Map<String, dynamic> service) {
@@ -317,6 +404,75 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
         backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
         colorText: AppTheme.primaryTeal,
         duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<void> validatePassword() async {
+    // Check if current password field is empty
+    if (currentPasswordController.text.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please enter your current password',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      // Get SharedPreferences instance
+      final prefs = await SharedPreferences.getInstance();
+
+      // Get stored password
+      final storedPassword = prefs.getString('password');
+      final storedUsername = prefs.getString('username');
+
+      // Check if password exists in SharedPreferences
+      if (storedPassword == null || storedUsername == null) {
+        Get.snackbar(
+          'Error',
+          'No stored credentials found',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+        return;
+      }
+
+      // Validate password
+      if (currentPasswordController.text == storedPassword) {
+        // Password is correct
+        isPasswordValidated.value = true;
+
+        Get.snackbar(
+          'Success',
+          'Password validated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.green.withOpacity(0.8),
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      } else {
+        // Password is incorrect
+        isPasswordValidated.value = false;
+
+        Get.snackbar(
+          'Error',
+          'Current password is incorrect',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.8),
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to validate password: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.8),
+        colorText: Colors.white,
       );
     }
   }
@@ -404,6 +560,90 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
     }
   }
 
+  // Helper methods for better UX
+  void _showSuccessSnackbar(String message) {
+    Get.snackbar(
+      'Success',
+      message,
+      backgroundColor: Colors.green.withOpacity(0.9),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 3),
+      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+      animationDuration: const Duration(milliseconds: 300),
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    Get.snackbar(
+      'Error',
+      message,
+      backgroundColor: Colors.red.withOpacity(0.9),
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 4),
+      icon: const Icon(Icons.error_outline, color: Colors.white),
+      animationDuration: const Duration(milliseconds: 300),
+    );
+  }
+
+  Future<void> updateUser() async {
+    // Validation
+    if (usernameController.text.trim().isEmpty) {
+      _showErrorSnackbar('Username is required');
+      return;
+    }
+
+    if (newPasswordController.text.isNotEmpty && newPasswordController.text.length < 2) {
+      _showErrorSnackbar('Password must be at least 2 characters');
+      return;
+    }
+
+    try {
+      final apiConfig = await ApiConfig.load();
+      final userId = await ApiConfig.getLoginData();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}user_update'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userid': userId?.response?.empId.toString() ?? '',
+          'empid': userId?.response?.empId?.toString() ?? '',
+          'empcode': usernameController.text.trim(),
+          'pwd': newPasswordController.text.isNotEmpty ? newPasswordController.text : '',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+
+        final prefs = await SharedPreferences.getInstance();
+
+        // Update password in SharedPreferences
+        await prefs.setString('password', newPasswordController.text);
+
+        // Clear password fields after successful update
+        currentPasswordController.clear();
+        newPasswordController.clear();
+
+        Get.back(); // Close edit dialog
+        _showSuccessSnackbar(responseData['message'] ?? 'User updated successfully');
+      } else if (response.statusCode == 401) {
+        final responseData = jsonDecode(response.body);
+        _showErrorSnackbar(responseData['message'] ?? 'Unauthorized access');
+      } else {
+        _showErrorSnackbar('Failed to update user: ${response.statusCode}');
+      }
+    } catch (e) {
+      Get.back(); // Close loading dialog
+      _showErrorSnackbar('Network error: ${e.toString()}');
+    }
+  }
+
   void onNextButtonTap() {
     if (selectedLocation.value != null) {
       // Save selected location to static variable
@@ -427,6 +667,9 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
         colorText: Colors.orange,
       );
     }
+
+
+
 
 
 

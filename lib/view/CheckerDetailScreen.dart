@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:onepicker/controllers/HomeScreenController.dart';
 import 'package:onepicker/model/PickerListDetailModel.dart';
+import 'package:onepicker/services/services.dart';
 
 import '../controllers/CheckerController.dart';
 import '../controllers/PickerController.dart';
@@ -15,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import 'CustomerDetailsDialog.dart';
 import 'PickerListTab.dart';
 
 class CheckerDetailScreen extends StatefulWidget {
@@ -37,6 +39,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
   final TextEditingController searchController = TextEditingController();
   final FocusNode searchFocusNode = FocusNode();
   final ScrollController scrollController = ScrollController();
+  bool isNumberKeyboard = true; // Start with number keyboard
 
   String searchQuery = '';
   bool isSearching = false;
@@ -46,17 +49,40 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
   // Changed: Use unique item identifier instead of index
   Map<String, TextEditingController> qtyControllers = {};
   Map<String, FocusNode> qtyFocusNodes = {};
+  int batchNo = 0;
+  bool isLoadingBatchNo = true;
+
 
   @override
   void initState() {
     super.initState();
+    ever(controller.packerDetails, (_) {
+      _initializeData();
+    });
     _initializeData();
     _setupSearch();
+    _loadBatchNo(); // Add this
+
+  }
+
+  Future<void> _loadBatchNo() async {
+    try {
+      batchNo = await ApiConfig.getSyn('BatchCheck');
+      setState(() {
+        isLoadingBatchNo = false;
+      });
+    } catch (e) {
+      print("Error loading batch check: $e");
+      setState(() {
+        isLoadingBatchNo = false;
+        batchNo = 0; // default value on error
+      });
+    }
   }
 
   String _getUniqueItemKey(PickerMenuDetail item) {
-    // Create unique key using item properties that don't change
-    return '${item.itemDetailId}_${item.batchNo}_${item.loca}_${item.locn}';
+    // These items differ by tQty, so include it in the key
+    return '${item.itemDetailId}_${item.loca}_${item.locn}_${item.batchNo}_${item.mrp}_${item.tQty}';
   }
 
   void _initializeData() {
@@ -73,6 +99,8 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
       if (item.isChk == "YES") {
         qtyControllers[key]?.text = item.tQty?.toString() ?? '';
       }
+      print('📝 Init controller - Key: $key, isChk: ${item.isChk}, tQty: ${item.tQty}');
+
     }
   }
 
@@ -99,8 +127,9 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     _updateCheckedItems();
   }
 
-  void _updateCheckedItems() {
-    checkedItems = filteredDetails.where((item) => item.isChk == "YES").toList();
+  Future<void> _updateCheckedItems() async {
+    checkedItems = controller.packerDetails.where((item) => item.isChk == "YES").toList();
+    batchNo = await ApiConfig.getSyn('BatchCheck');
   }
 
   bool _shouldShowUnmasked(PickerMenuDetail item) {
@@ -130,36 +159,99 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     final targetQty = item.tQty?.toString() ?? '';
     final itemKey = _getUniqueItemKey(item);
 
-    setState(() {
-      if (value == targetQty) {
-        // Update the model directly
-        item.isChk = "YES";
-        // Set the tQty in the model to maintain consistency
-        if (item.tQty == null) {
-          item.tQty = int.tryParse(value);
+    if (value == targetQty) {
+      // Update the model directly
+      item.isChk = "YES";
+      if (item.tQty == null) {
+        item.tQty = int.tryParse(value);
+      }
+
+      if (!checkedItems.contains(item)) {
+        checkedItems.add(item);
+      }
+
+      // Keep the value in the controller
+      qtyControllers[itemKey]?.text = value;
+
+      // Show success feedback BEFORE setState
+      _showSuccessMessage(item.itemName ?? 'Item');
+      searchController.clear();
+
+
+      // Delay the setState to give user time to see the feedback
+      Future.delayed(const Duration(milliseconds: 800), () {
+        if (mounted) {
+          setState(() {
+            // State update happens here after delay
+          });
         }
-
-        if (!checkedItems.contains(item)) {
-          checkedItems.add(item);
-        }
-
-        // Clear the controller since item is now checked
-        qtyControllers[itemKey]?.text = value;
-
-        _showSuccessMessage();
-
-        // Unfocus the field
-        qtyFocusNodes[itemKey]?.unfocus();
-      } else {
-        // Update the model directly
+      });
+    } else {
+      // Immediate update for incorrect quantity
+      setState(() {
         item.isChk = "NO";
         checkedItems.remove(item);
 
         if (value.isNotEmpty && value != targetQty) {
           _showCorrectQtyMessage(targetQty);
         }
-      }
-    });
+      });
+    }
+  }
+
+  void _showSuccessMessage(String itemName) {
+    HapticFeedback.mediumImpact();
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.check_circle,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Quantity Verified ✓',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Text(
+                    itemName,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green.shade600,
+        duration: const Duration(milliseconds: 1500),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
   }
 
   void _showCorrectQtyMessage(String correctQty) {
@@ -176,9 +268,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     );
   }
 
-  void _showSuccessMessage() {
-    HapticFeedback.lightImpact();
-  }
+
 
   Color _getCardColor(PickerMenuDetail item) {
     if (item.isChk == "YES") {
@@ -206,18 +296,43 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      appBar: _buildAppBar(),
-      body: Column(
-        children: [
-          _buildHeader(),
-          _buildSearchField(),
-          Expanded(
-            child: _buildItemsList(),
-          ),
-          if (checkedItems.isNotEmpty) _buildSubmitButton(),
-        ],
+    return WillPopScope(
+      onWillPop: () async {
+        // Check if there are any checked items (unsaved changes)
+        if (checkedItems.isNotEmpty) {
+          final shouldSave = await _showExitDialog();
+          if (shouldSave) {
+            // Save changes before going back
+            if (checkedItems.length == controller.packerDetails.length) {
+              _showTrayManagementDialog();
+            } else {
+              await controller.submitCheckedItems(widget.pickerData, checkedItems);
+              Get.back();
+            }
+          } else {
+            // Discard changes and go back
+            Get.back();
+          }
+        } else {
+          // No changes, go back directly
+          Get.back();
+        }
+        return false;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey.shade50,
+        appBar: _buildAppBar(),
+        body: Column(
+          children: [
+            _buildHeader(),
+            _buildSearchField(),
+            Expanded(
+              child: _buildItemsList(),
+            ),
+            // if (checkedItems.isNotEmpty)
+              _buildSubmitButton(),
+          ],
+        ),
       ),
     );
   }
@@ -240,8 +355,29 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
             size: 16,
           ),
         ),
-        onPressed: () => Get.back(),
+        onPressed: () async {
+          // Check if there are any checked items (unsaved changes)
+          if (checkedItems.isNotEmpty) {
+            final shouldSave = await _showExitDialog();
+            if (shouldSave) {
+              // Save changes before going back
+              if (checkedItems.length == controller.packerDetails.length) {
+                _showTrayManagementDialog();
+              } else {
+                await controller.submitCheckedItems(widget.pickerData, checkedItems);
+                Get.back();
+              }
+            } else {
+              // Discard changes and go back
+              Get.back();
+            }
+          } else {
+            // No changes, go back directly
+            Get.back();
+          }
+        },
       ),
+      // ... rest of your AppBar code remains the same
       title: Text(
         'Quality Check',
         style: TextStyle(
@@ -280,6 +416,150 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
       ],
     );
   }
+  Future<bool> _showExitDialog() async {
+    return await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+          backgroundColor: Colors.white,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white,
+                  Colors.grey.shade50,
+                ],
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Icon
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.warning_rounded,
+                    size: 40,
+                    color: Colors.orange.shade600,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Title
+                Text(
+                  'Save Changes?',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Message
+                Text(
+                  'You have unsaved changes. Do you want to save your progress before leaving?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Buttons
+                Row(
+                  children: [
+                    // Discard Button
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(false); // Don't save, just exit
+                        },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade600,
+                          side: BorderSide(color: Colors.red.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.delete_outline, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Discard',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Save Button
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop(true); // Save and exit
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.save_outlined, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Yes, Save',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    ) ?? false; // Return false if dialog is dismissed
+  }
 
   Widget _buildHeader() {
     final showAllTrays = false.obs;
@@ -294,6 +574,11 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
           .map((t) => t.trim())
           .where((t) => t.isNotEmpty)
           .toList();
+
+      if (trayNumbers.isEmpty) {
+        trayNumbers.add('N/A'); // or throw an error if this shouldn't happen
+      }
+
 
       return Container(
         margin: const EdgeInsets.all(12),
@@ -342,7 +627,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                           Icon(Icons.inventory_2_rounded, size: 14, color: Colors.white),
                           SizedBox(width: 4),
                           Text(
-                            trayNumbers.first,
+                            "${trayNumbers.first}",
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 12,
@@ -376,38 +661,50 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
 
                   // Invoice Badge
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.primaryTeal.withOpacity(0.3),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
+                    child: GestureDetector(
+                        onTap: () {
+                          // Example usage - replace with your actual data
+                          CustomerDetailsDialog.showCustomerDialog(
+                            context: context,
+                            name: widget.pickerData.party!,
+                            address: widget.pickerData.lMark!,
+                            city: widget.pickerData.city!,
+                            area: widget.pickerData.area!,
+                          );
+                        },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
                           ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.receipt_long, size: 14, color: Colors.white),
-                          SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              '${widget.pickerData.invNo}',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryTeal.withOpacity(0.3),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.receipt_long, size: 14, color: Colors.white),
+                            SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                '${widget.pickerData.invNo}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -485,26 +782,48 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
 
   Widget _buildSearchField() {
     return Container(
-      margin: const EdgeInsets.only(left: 16,right: 16),
+      margin: const EdgeInsets.only(left: 16, right: 16),
       height: 45,
       child: TextField(
         controller: searchController,
         focusNode: searchFocusNode,
-        keyboardType: TextInputType.number,
+        keyboardType: isNumberKeyboard ? TextInputType.number : TextInputType.text,
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: 'Search by Batch No or MRP...',
           hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
           prefixIcon: Icon(Icons.search, color: Colors.grey.shade600, size: 20),
-          suffixIcon: searchQuery.isNotEmpty
-              ? IconButton(
-            icon: Icon(Icons.clear, color: Colors.grey, size: 20),
-            onPressed: () {
-              searchController.clear();
-              searchFocusNode.unfocus();
-            },
-          )
-              : null,
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ABC/123 Switch Button
+              IconButton(
+                icon: Icon(
+                  isNumberKeyboard ? Icons.abc : Icons.dialpad,
+                  color: Colors.teal.shade600,
+                  size: 20,
+                ),
+                onPressed: () {
+                  setState(() {
+                    isNumberKeyboard = !isNumberKeyboard;
+                    // Refocus to update keyboard
+                    searchFocusNode.unfocus();
+                    Future.delayed(Duration(milliseconds: 100), () {
+                      searchFocusNode.requestFocus();
+                    });
+                  });
+                },
+              ),
+              if (searchQuery.isNotEmpty)
+                IconButton(
+                  icon: Icon(Icons.clear, color: Colors.grey, size: 20),
+                  onPressed: () {
+                    searchController.clear();
+                    searchFocusNode.unfocus();
+                  },
+                ),
+            ],
+          ),
           filled: true,
           fillColor: Colors.white,
           border: OutlineInputBorder(
@@ -527,14 +846,6 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
   }
 
   Widget _buildItemsList() {
-    // Sort items: unchecked first, then checked
-    final sortedItems = [...filteredDetails];
-    sortedItems.sort((a, b) {
-      if (a.isChk == "YES" && b.isChk != "YES") return 1;
-      if (a.isChk != "YES" && b.isChk == "YES") return -1;
-      return 0;
-    });
-
     return Obx(() {
       if (controller.isLoadingPackerDetails.value) {
         return const Center(
@@ -544,182 +855,831 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
         );
       }
 
-      return GridView.builder(
-        controller: scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 2,
-          mainAxisSpacing: 2,
-          childAspectRatio: 0.72,
-        ),
-        itemCount: sortedItems.length,
-        itemBuilder: (context, index) {
-          final item = sortedItems[index];
-          return _buildItemCard(item);
+      // Sort items inside Obx so it recalculates on every rebuild
+      final sortedItems = [...filteredDetails];
+      sortedItems.sort((a, b) {
+        if (a.isChk == "YES" && b.isChk != "YES") return 1;
+        if (a.isChk != "YES" && b.isChk == "YES") return -1;
+        return 0;
+      });
+
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final screenWidth = constraints.maxWidth;
+          final isTablet = screenWidth >= 600;
+
+          // Calculate columns based on screen size
+          final crossAxisCount = isTablet
+              ? (screenWidth >= 900 ? 4 : 3)  // 4 columns for large tablets, 3 for small tablets
+              : 2;  // 2 columns for mobile
+
+          // Dynamic spacing
+          final spacing = isTablet ? 8.0 : 2.0;
+
+          // ⭐ KEY SOLUTION: Fixed height for cards
+          // Adjust this value based on your item card content
+          final cardHeight = isTablet ? 285.0 : 285.0;
+
+          // Calculate available width per card
+          final horizontalPadding = 16.0; // 8 * 2
+          final totalSpacing = spacing * (crossAxisCount - 1);
+          final availableWidth = screenWidth - horizontalPadding - totalSpacing;
+          final cardWidth = availableWidth / crossAxisCount;
+
+          // Calculate aspect ratio dynamically based on actual dimensions
+          final childAspectRatio = cardWidth / cardHeight;
+
+          print("Items - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+          return GridView.builder(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+              childAspectRatio: childAspectRatio,
+            ),
+            itemCount: sortedItems.length,
+            itemBuilder: (context, index) {
+              final item = sortedItems[index];
+              return _buildItemCard(item, isTablet, index); // Pass index
+            },
+          );
         },
       );
     });
   }
 
-  Widget _buildItemCard(PickerMenuDetail item) {
-    final showUnmasked = _shouldShowUnmasked(item);
+  Widget _buildItemCard(PickerMenuDetail item, bool isTablet, int index) {
+    if (isLoadingBatchNo) {
+      return const Card(
+        child: Center(
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    final showUnmasked = batchNo != 1 || _shouldShowUnmasked(item);
     final isChecked = item.isChk == "YES";
     final canEditQty = showUnmasked || searchQuery.length >= 2;
-    final itemKey = _getUniqueItemKey(item);
+    final itemKey = '${item.itemDetailId}_${item.loca}_${item.locn}_${item.batchNo}_${item.tQty}';
+    print('🔑 Card Key: $itemKey');
+    print('   isChk: ${item.isChk}');
+    print('   tQty: ${item.tQty}');
+    print('   Name: ${item.itemName}');
+    print('---');
 
-    return Card(
-      elevation: 3,
-      color: _getCardColor(item),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: _getCardBorderColor(item),
-          width: isChecked ? 2 : 1,
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return Card(
+          key: ValueKey(itemKey),
+          elevation: 3,
+          color: _getCardColor(item),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: _getCardBorderColor(item),
+              width: isChecked ? 2 : 1,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                    child:Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade400, Colors.purple.shade400],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 14,
-                            color: Colors.white,
+                // Header Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Colors.blue.shade400, Colors.purple.shade400],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${item.loca}-${item.locn}',
-                            style: const TextStyle(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on, size: 14, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${item.loca}-${item.locn}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+
+                            Spacer(),
+                      GestureDetector(
+                  onTap: () {
+                    String? selectedRemark = item.pNote; // Store currently selected remark
+
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (BuildContext context) {
+                        return StatefulBuilder(
+                          builder: (context, setDialogState) {
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              title: Row(
+                                children: [
+                                  Icon(
+                                    Icons.edit_note,
+                                    color: AppTheme.primaryTeal,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Select Remark',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Choose a remark:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+
+                                  // Predefined options
+                                  _buildRemarkOption(
+                                    'Shortage in Quantity Received',
+                                    selectedRemark,
+                                        (value) {
+                                      setDialogState(() {
+                                        selectedRemark = value;
+                                      });
+                                    },
+                                  ),
+                                  _buildRemarkOption(
+                                    'Excess Quantity Received',
+                                    selectedRemark,
+                                        (value) {
+                                      setDialogState(() {
+                                        selectedRemark = value;
+                                      });
+                                    },
+                                  ),
+                                  _buildRemarkOption(
+                                    'Incorrect Batch Received',
+                                    selectedRemark,
+                                        (value) {
+                                      setDialogState(() {
+                                        selectedRemark = value;
+                                      });
+                                    },
+                                  ),
+                                  _buildRemarkOption(
+                                    'Incorrect Product Received',
+                                    selectedRemark,
+                                        (value) {
+                                      setDialogState(() {
+                                        selectedRemark = value;
+                                      });
+                                    },
+                                  ),
+                                  _buildRemarkOption(
+                                    'Product Not Picked',
+                                    selectedRemark,
+                                        (value) {
+                                      setDialogState(() {
+                                        selectedRemark = value;
+                                      });
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 16),
+
+                                  // Display selected remark
+                                  const Text(
+                                    'Selected Remark:',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: AppTheme.primaryTeal.withOpacity(0.3),
+                                      ),
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: Colors.grey[50],
+                                    ),
+                                    child: Text(
+                                      selectedRemark ?? 'No remark selected',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: selectedRemark != null ? Colors.black : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                // Clear Button
+                                TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    // Show confirmation dialog for clearing
+                                    showDialog(
+                                      context: context,
+                                      builder: (BuildContext context) {
+                                        return AlertDialog(
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          title: const Row(
+                                            children: [
+                                              Icon(
+                                                Icons.warning,
+                                                color: Colors.orange,
+                                                size: 24,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Clear Remark',
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          content: const Text(
+                                            'Are you sure you want to clear this remark?',
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                              },
+                                              child: Text(
+                                                'Cancel',
+                                                style: TextStyle(
+                                                  color: Colors.grey[600],
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                                setState(() {
+                                                  item.pNote = null;
+                                                });
+
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: const Text('Remark cleared successfully!'),
+                                                    backgroundColor: Colors.orange,
+                                                    behavior: SnackBarBehavior.floating,
+                                                    shape: RoundedRectangleBorder(
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.red,
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Clear',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.red,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    'Clear',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+
+                                // Cancel Button
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+
+                                // Save Button
+                                ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+
+                                    setState(() {
+                                      item.pNote = selectedRemark;
+                                    });
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          selectedRemark != null ? 'Remark saved successfully!' : 'Remark cleared!',
+                                        ),
+                                        backgroundColor: AppTheme.primaryTeal,
+                                        behavior: SnackBarBehavior.floating,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.save,
+                                    size: 18,
+                                  ),
+                                  label: const Text(
+                                    'Save',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primaryTeal,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                  child: const Icon(Icons.info, size: 16, color: Colors.white),
+                ),
+
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    if (isChecked)
+                      Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.check, color: Colors.white, size: 14),
+                      ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Item Name
+                GestureDetector(
+                  onTap: () => pController.showItemStockDetail(
+                    item.itemDetailId ?? 0,
+                    item.itemName.toString(),
+                  ),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.orange.shade300, Colors.red.shade300],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      item.itemName ?? '',
+                      style: TextStyle(
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w600,
+                        fontSize: isTablet ? 14 : 12,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 3),
+                Text(
+                  item.packing ?? '',
+                  style:  TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w600,
+                    fontSize: isTablet ? 14 : 12,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+
+                const SizedBox(height: 8),
+
+                // Manufacture and Batch details
+                if(item.ccp == 1)
+                  Container(
+                    height: 20,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.amberGold,
+                          AppTheme.amberGold.withOpacity(0.8),
+                          AppTheme.amberGold,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.amberGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          // Icon on the left
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Icon(
+                              Icons.comment_outlined,
                               color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                              size: 14,
+                            ),
+                          ),
+
+                          // Marquee text
+                          Expanded(
+                            child: _MarqueeText(
+                              text: 'Checked with coolant.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    )
-                ),
-                const SizedBox(width: 6),
-                if (isChecked)
-                  Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 14,
                     ),
                   ),
-              ],
-            ),
 
-            const SizedBox(height: 8),
+                const SizedBox(height: 3),
+                if (item.pNote != null && item.pNote!.isNotEmpty) ...[
+                  GestureDetector(
+                    onTap: () {
+                      TextEditingController remarkController = TextEditingController();
 
-            // Item Name
-            GestureDetector(
-              onTap: () => pController.showItemStockDetail(
-                item.itemDetailId ?? 0,
-                item.itemName.toString(),
-              ),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.orange.shade300, Colors.red.shade300],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  item.itemName ?? '',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.start,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              item.packing ?? '',
-              style: const TextStyle(
-                color: Colors.grey,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.start,
-            ),
+                      // Pre-fill with existing note
+                      remarkController.text = item.pNote ?? '';
 
-            const SizedBox(height: 6),
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Row(
+                              children: [
+                                Icon(
+                                  Icons.edit_note,
+                                  color: AppTheme.primaryTeal,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'Review Remark',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: AppTheme.primaryTeal.withOpacity(0.3),
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: TextField(
+                                    controller: remarkController,
+                                    enabled: false, // Makes the TextField non-editable
+                                    maxLines: 4,
+                                    minLines: 3,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Type your remark here...',
+                                      border: InputBorder.none,
+                                      contentPadding: EdgeInsets.all(12),
+                                      hintStyle: TextStyle(
+                                        color: Colors.black87,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black87
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              // Clear Button
+                              TextButton.icon(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  // Show confirmation dialog for clearing
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return AlertDialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                        ),
+                                        title: const Row(
+                                          children: [
+                                            Icon(
+                                              Icons.warning,
+                                              color: Colors.orange,
+                                              size: 24,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Clear Remark',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        content: const Text(
+                                          'Are you sure you want to clear this remark?',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                            },
+                                            child: Text(
+                                              'Cancel',
+                                              style: TextStyle(
+                                                color: Colors.grey[600],
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              setState(() {
+                                                item.pNote = '';
+                                              });
 
-            // Item Details
-            Expanded(
-              child: Column(
-                children: [
-                  _buildDetailRow(
-                    'B',
-                    _getMaskedText(item.batchNo, showUnmasked),
-                    Colors.pink,
-                  ),
-                  const SizedBox(height: 3),
-                  _buildDetailRow(
-                    'E',
-                    item.sExpDate ?? '',
-                    Colors.black87,
-                  ),
-                  const SizedBox(height: 3),
-                  _buildDetailRow(
-                    'M',
-                    _getMaskedText(item.mrp?.toString(), showUnmasked, isMrp: true),
-                    Colors.black87,
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: const Text('Remark cleared successfully!'),
+                                                  backgroundColor: Colors.orange,
+                                                  behavior: SnackBarBehavior.floating,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(8),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.red,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Clear',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  );
+                                },
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.red,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'Clear',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+
+                              // Cancel Button
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+
+                              // Save Button
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryTeal.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppTheme.primaryTeal.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.pNote!,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Icon(
+                            Icons.edit,
+                            size: 12,
+                            color: AppTheme.primaryTeal.withOpacity(0.7),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
-              ),
+                // Item Details
+                Column(
+                  children: [
+                    _buildDetailRow(
+                      'B',
+                      _getMaskedText(item.batchNo, showUnmasked),
+                      (item.bCount ?? 0) > 1
+                          ? Colors.pinkAccent // when bCount > 1
+                          : Colors.black87,
+                      isTablet
+                    ),
+                    const SizedBox(height: 3),
+                    _buildDetailRow(
+                      'E',
+                      item.sExpDate ?? '',
+                      Colors.black87,
+                      isTablet
+                    ),
+                    const SizedBox(height: 3),
+                    _buildDetailRow(
+                      'M',
+                      _getMaskedText(item.mrp?.toString(), showUnmasked, isMrp: true),
+                      (item.mCount ?? 0) > 1
+                          ? Colors.pinkAccent // when bCount > 1
+                          : Colors.black87,
+                      isTablet
+                    ),
+                  ],
+                ),
+
+                const Spacer(),
+
+                // Quantity Field
+                _buildQuantityField(item, canEditQty,isTablet),
+              ],
             ),
+          ),
+        );
+  }
 
-            const SizedBox(height: 8),
+  Widget _buildRemarkOption(String value, String? selectedRemark, Function(String?) onChanged) {
+    bool isSelected = selectedRemark == value;
 
-            // Quantity Field
-            _buildQuantityField(item, canEditQty),
-          ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: InkWell(
+        onTap: () => onChanged(value),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryTeal : Colors.grey[300]!,
+              width: isSelected ? 2 : 1,
+            ),
+            borderRadius: BorderRadius.circular(8),
+            color: isSelected ? AppTheme.primaryTeal.withOpacity(0.1) : Colors.transparent,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                color: isSelected ? AppTheme.primaryTeal : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isSelected ? AppTheme.primaryTeal : Colors.black87,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, Color labelColor) {
+  Widget _buildDetailRow(String label, String value, Color labelColor,bool isTablet) {
     return Row(
       children: [
         Text(
@@ -727,15 +1687,15 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
           style: TextStyle(
             color: labelColor,
             fontWeight: FontWeight.w600,
-            fontSize: 13,
+            fontSize: isTablet ? 15 : 13,
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 13,
+            style: TextStyle(
+              color: labelColor,
+              fontSize: isTablet ? 15 : 13,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -744,7 +1704,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     );
   }
 
-  Widget _buildQuantityField(PickerMenuDetail item, bool canEdit) {
+  Widget _buildQuantityField(PickerMenuDetail item, bool canEdit,bool isTablet) {
     final itemKey = _getUniqueItemKey(item);
 
     return TextField(
@@ -764,7 +1724,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
         hintStyle: TextStyle(
           color: Colors.grey.shade500,
           fontWeight: FontWeight.normal,
-          fontSize: 12,
+          fontSize: isTablet ? 14 : 12,
         ),
         filled: true,
         fillColor: canEdit ? Colors.white : Colors.grey.shade100,
@@ -799,7 +1759,10 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         isDense: true,
       ),
-      onChanged: (value) => _onQtyChanged(item, value),
+      onChanged: (value) {
+        // Don't call setState immediately, just update the logic
+        _onQtyChanged(item, value);
+      },
       onEditingComplete: () {
         qtyFocusNodes[itemKey]?.unfocus();
       },
@@ -830,7 +1793,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
               _showTrayManagementDialog();
             }else{
               controller.submitCheckedItems(widget.pickerData, checkedItems);
-
+              searchController.clear();
             }
           },
           style: ElevatedButton.styleFrom(
@@ -878,7 +1841,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
         return TrayManagementDialog(        // <-- This is where TrayManagementDialog is called
           pickerData: widget.pickerData,
           onTrayUpdated: () {
-            controller.submitCheckedItems(widget.pickerData, checkedItems);
+            controller.submitCheckedAllItems(widget.pickerData, checkedItems);
             Get.back();
           },
           checkedItems: checkedItems,
@@ -889,6 +1852,8 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
 
 
 }
+
+
 class TrayManagementDialog extends StatefulWidget {
   final PickerData pickerData;
   final VoidCallback onTrayUpdated;
@@ -1027,7 +1992,7 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
     final controller = Get.find<CheckerController>();
     Navigator.of(context).pop();
 
-    controller.submitCheckedItems(widget.pickerData, widget.checkedItems);
+    controller.submitCheckedAllItems(widget.pickerData, widget.checkedItems);
     Get.back();
   }
 
@@ -1046,18 +2011,18 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
 
     try {
       final controller = Get.find<CheckerController>();
-      final allTrays = [...oldTrays, ...newTrays];
-      final combinedTrayString = allTrays.join(',');
+
+      // Only use newTrays
+      final newTrayString = newTrays.join(',');
 
       await controller.assignTray(
         siId: widget.pickerData.sIId ?? 0,
-        trayNumbers: combinedTrayString,
+        trayNumbers: newTrayString,
         trayCount: newTrays.length,
       );
 
       Navigator.of(context).pop();
       widget.onTrayUpdated();
-
 
     } catch (e) {
       setState(() {
@@ -1068,6 +2033,7 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
         isLoading = false;
       });
     }
+
   }
 
   Widget _buildTrayChip(String tray, {bool isRemovable = false}) {
@@ -1475,6 +2441,117 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MarqueeText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final double speed; // pixels per second
+
+  const _MarqueeText({
+    required this.text,
+    required this.style,
+    this.speed = 30.0,
+  });
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText>
+    with SingleTickerProviderStateMixin {
+  late ScrollController _scrollController;
+  late AnimationController _animationController;
+  double _textWidth = 0;
+  double _containerWidth = 0;
+  bool _shouldScroll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfScrollNeeded();
+    });
+  }
+
+  void _checkIfScrollNeeded() {
+    final textPainter = TextPainter(
+      text: TextSpan(text: widget.text, style: widget.style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    _textWidth = textPainter.width;
+    _containerWidth = context.size?.width ?? 0;
+
+    if (_textWidth > _containerWidth) {
+      setState(() {
+        _shouldScroll = true;
+      });
+      _startScrolling();
+    }
+  }
+
+  void _startScrolling() {
+    if (!_shouldScroll) return;
+
+    final duration = Duration(
+      milliseconds: ((_textWidth + _containerWidth) / widget.speed * 1000).round(),
+    );
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        _scrollController
+            .animateTo(
+          _textWidth + _containerWidth,
+          duration: duration,
+          curve: Curves.linear,
+        )
+            .then((_) {
+          if (mounted) {
+            _scrollController.jumpTo(0);
+            _startScrolling();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shouldScroll) {
+      return Text(
+        widget.text,
+        style: widget.style,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      controller: _scrollController,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Row(
+        children: [
+          Text(widget.text, style: widget.style),
+          SizedBox(width: _containerWidth),
+          Text(widget.text, style: widget.style),
+        ],
       ),
     );
   }

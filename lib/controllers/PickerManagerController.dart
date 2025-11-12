@@ -31,6 +31,16 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
   var selectedPickerIndex = (-1).obs;
   var selectedDetailIds = <String>[].obs;
 
+  PickerData? _lastSelectedPicker;  // Remember which picker was selected
+  List<String> _lastSelectedDetailIds = []; // Remember which products were selected
+
+  final searchController = TextEditingController();
+
+  var searchQuery = ''.obs;
+  var filteredPickerList = <PickerData>[].obs;
+
+  late PickerData currentPicker;
+
   // Tab index
   var currentTabIndex = 0.obs;
 
@@ -49,6 +59,8 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
 
     // Load initial data
     fetchPickerList();
+    filteredPickerList.assignAll(pickerList);
+
   }
 
   @override
@@ -57,28 +69,58 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
     super.onClose();
   }
 
+  void filterPickerList(String query) {
+    searchQuery.value = query;
+
+    if (query.isEmpty) {
+      filteredPickerList.assignAll(pickerList);
+    } else {
+      final queryLower = query.toLowerCase();
+
+      filteredPickerList.assignAll(
+        pickerList.where((picker) {
+          final trayNo = picker.trayNo?.toLowerCase() ?? '';
+          return trayNo.contains(queryLower);
+        }).toList(),
+      );
+    }
+  }
+
+
+  void clearSearch() {
+    searchQuery.value = '';
+    searchController.clear(); // clears the text field
+
+    filteredPickerList.assignAll(pickerList);
+  }
+
   void onPickerItemSelect(int index, PickerData pickerData) {
     selectedPickerIndex.value = index;
     selectedDetailIds.clear(); // Clear previous selections when switching picker items
     fetchPickerDetails(pickerData);
 
+    currentPicker = pickerData;
+
+    // 🆕 Save the selected picker for refresh restoration
+    _lastSelectedPicker = pickerData;
+    _lastSelectedDetailIds.clear(); // Clear saved selections when switching pickers
+
     // Force UI update to highlight selected picker card
     selectedPickerIndex.refresh();
   }
-
   void onDetailSelectionChanged(String detailId, bool isSelected) {
-
-    final detail = pickerDetails.firstWhere(
-          (d) => d.itemDetailId.toString() == detailId,
-    );
-    if (detail.pLedId == 0) return; // Stop here if disabled
-
     if (isSelected) {
       if (!selectedDetailIds.contains(detailId)) {
         selectedDetailIds.add(detailId);
+        // 🆕 Save to persistent list
+        if (!_lastSelectedDetailIds.contains(detailId)) {
+          _lastSelectedDetailIds.add(detailId);
+        }
       }
     } else {
       selectedDetailIds.remove(detailId);
+      // 🆕 Remove from persistent list
+      _lastSelectedDetailIds.remove(detailId);
     }
     selectedDetailIds.refresh(); // Force UI update
   }
@@ -228,6 +270,9 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
 
         if (pickerListModel.status == '200' ) {
           pickerList.assignAll(pickerListModel.pickerData ?? []);
+
+          filterPickerList(searchQuery.value);
+
           if (pickerList.isEmpty) {
             Get.snackbar(
               'Info',
@@ -891,18 +936,104 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
     );
   }
 
-  // Handle picker item tap
-  void onPickerItemTap(PickerData pickerData) {
-    fetchPickerDetails(pickerData);
-  }
+
 
   // Refresh data
+  // 🆕 NEW IMPROVED REFRESH METHOD
   Future<void> refreshData() async {
-    selectedPickerIndex.value = -1; // Reset selection
-    selectedDetailIds.clear(); // Clear detail selections
-    await fetchPickerList();
+    try {
+      // 1. Save current state BEFORE refresh
+      final hadSelectedPicker = selectedPickerIndex.value != -1;
+      final savedPickerSIId = _lastSelectedPicker?.sIId;
+      final savedTrayNo = _lastSelectedPicker?.trayNo;
+      final savedSelections = List<String>.from(_lastSelectedDetailIds);
+
+      print("🔄 Refresh started");
+      print("📌 Saved picker SIId: $savedPickerSIId");
+      print("📌 Saved tray: $savedTrayNo");
+      print("📌 Saved ${savedSelections.length} product selections");
+
+      // 2. Refresh the picker list
+      await fetchPickerList();
+
+      // 3. If there was a selected picker, restore it
+      if (hadSelectedPicker && savedPickerSIId != null) {
+        print("🔍 Looking for picker with SIId: $savedPickerSIId");
+
+        // Find the picker in the refreshed list by SIId
+        final restoredPickerIndex = pickerList.indexWhere(
+                (picker) => picker.sIId == savedPickerSIId
+        );
+
+        if (restoredPickerIndex != -1) {
+          print("✅ Found picker at index: $restoredPickerIndex");
+
+          // Restore the picker selection
+          selectedPickerIndex.value = restoredPickerIndex;
+          final restoredPicker = pickerList[restoredPickerIndex];
+          _lastSelectedPicker = restoredPicker;
+          currentPicker = restoredPicker;
+
+          // Reload the picker details
+          await fetchPickerDetails(restoredPicker);
+
+          // Restore product selections
+          print("🔄 Restoring ${savedSelections.length} product selections");
+          selectedDetailIds.clear();
+          selectedDetailIds.addAll(savedSelections);
+          selectedDetailIds.refresh();
+
+          print("✅ Refresh complete - State restored!");
+
+          // Get.snackbar(
+          //   'Refreshed',
+          //   'Data updated - Your selections are preserved',
+          //   backgroundColor: AppTheme.accentGreen.withOpacity(0.1),
+          //   colorText: AppTheme.accentGreen,
+          //   duration: const Duration(seconds: 2),
+          //   snackPosition: SnackPosition.BOTTOM, // 👈 Show at bottom
+          //   margin: const EdgeInsets.only(  bottom: 20, left: 10, right: 10), // 👈 spacing from bottom
+          // );
+
+        } else {
+          // Picker was removed/completed - this is expected after submission
+          print("⚠️ Picker not found (may have been completed)");
+          _resetSelection();
+
+          Get.snackbar(
+            'Refreshed',
+            'Selected order has been completed',
+            backgroundColor: AppTheme.primaryTeal.withOpacity(0.1),
+            colorText: AppTheme.primaryTeal,
+            duration: const Duration(seconds: 2),
+          );
+        }
+      } else {
+        // No picker was selected before refresh
+        print("ℹ️ No picker was selected before refresh");
+        _resetSelection();
+      }
+
+    } catch (e) {
+      print('🔥 Error during refresh: $e');
+      Get.snackbar(
+        'Error',
+        'Failed to refresh data',
+        backgroundColor: Colors.red.withOpacity(0.1),
+        colorText: Colors.red,
+        duration: const Duration(seconds: 2),
+      );
+    }
   }
 
+// 🆕 Helper method to reset selection state
+  void _resetSelection() {
+    selectedPickerIndex.value = -1;
+    selectedDetailIds.clear();
+    pickerDetails.clear();
+    _lastSelectedPicker = null;
+    _lastSelectedDetailIds.clear();
+  }
 
 
   Future<void> assignTray({
@@ -911,6 +1042,7 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
     required int trayCount,
   }) async {
     try {
+
       final apiConfig = await ApiConfig.load();
       final loginData = await ApiConfig.getLoginData();
 
@@ -1011,8 +1143,12 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
       final selectedPicker = pickerList[selectedPickerIndex.value];
 
       // Get selected detail items
-      final selectedDetails = pickerDetails.where((detail) =>
-          selectedDetailIds.contains(detail.itemDetailId.toString())).toList();
+      final selectedDetails = pickerDetails.asMap().entries.where((entry) {
+        final index = entry.key; // This is the index in the list
+        final detail = entry.value;
+        final combinedId = "${detail.itemDetailId}$index";
+        return selectedDetailIds.contains(combinedId);
+      }).map((entry) => entry.value).toList();
 
       // Build the request body similar to Java version
       final Map<String, dynamic> requestBody = {
@@ -1096,6 +1232,9 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
           selectedDetailIds.clear();
           pickerDetails.clear();
 
+          _lastSelectedPicker = null;
+          _lastSelectedDetailIds.clear();
+
           // Refresh the picker list
           await fetchPickerList();
 
@@ -1105,13 +1244,6 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
             locationArray: locationArray,
           );
 
-          Get.snackbar(
-            'Success',
-            '${selectedDetails.length} items submitted successfully!',
-            backgroundColor: AppTheme.accentGreen.withOpacity(0.1),
-            colorText: AppTheme.accentGreen,
-            duration: const Duration(seconds: 3),
-          );
 
         } else {
           throw Exception(jsonData['message'] ?? 'Failed to submit picker');
@@ -1258,11 +1390,13 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
       final workingWithPickupManager = await ApiConfig.getSyn('WorkingWithPickupManager'); // Implement this
       final printInvPicker = await ApiConfig.getSsub('PrintInvPicker'); // Implement this
 
+      print("check merger valuee ${eTrayMerger}");
+      print("check merger valuee ${workingWithPickupManager}");
+
+
       if (eTrayMerger == 0) {
-        if (workingWithPickupManager == 0) {
           // Call saveMerger API
           await _saveMerger(siId, printInvPicker);
-        }
       } else {
         ScaffoldMessenger.of(Get.context!).showSnackBar(
           SnackBar(

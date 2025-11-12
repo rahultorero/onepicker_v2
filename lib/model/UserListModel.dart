@@ -91,7 +91,7 @@ class UserData {
   List<String> get assignedRoles {
     List<String> roles = [];
     if (admin == true) roles.add('Admin');
-    if (tray == true) roles.add('Tray');
+    if (tray == true) roles.add('Merger');
     if (trayPick == true) roles.add('Tray Assigner');
     if (picker == true) roles.add('Picker');
     if (pickMan == true) roles.add('Picker Manager');

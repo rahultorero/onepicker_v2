@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:onepicker/controllers/LoginController.dart';
 
+import '../model/BranchData.dart';
+import '../model/CompanyData.dart';
 import '../model/UserListModel.dart';
 import '../services/services.dart';
 import '../view/AdminScreen.dart';
@@ -29,23 +31,19 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
-  // Role assignment
-  var selectedRoles = <String, bool>{
-    'Admin': false,
-    'Doctor': false,
-    'Nurse': false,
-    'Receptionist': false,
-    'Manager': false,
-    'Tray': false,
-    'Tray Assigner': false,
-    'Picker': false,
-    'Picker Manager': false,
-    'Checker': false,
-    'Packer': false,
-    'Solver': false,
-  }.obs;
-
+  var selectedRoles = <String, bool>{}.obs;
   UserData? currentEditingUser;
+
+  // New properties for company and branch
+  var selectedCompanyId = 0.obs;
+  var selectedBranchId = 0.obs;
+  var showBranchDropdown = false.obs;
+
+  // Company and branch data lists
+  var companyList = <Map<String, dynamic>>[].obs;
+  var branchList = <Map<String, dynamic>>[].obs;
+
+
   var apiConfig;
 
   @override
@@ -65,6 +63,7 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     ever(existingUsers, (_) => _updateFilteredLists());
 
     fetchUserLists();
+    loadCompanyList();
   }
 
   // Search functionality
@@ -198,26 +197,161 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     );
   }
 
-  void showRoleAssignmentDialog(UserData user) {
+  Future<void> showRoleAssignmentDialog(UserData user) async {
     currentEditingUser = user;
 
     // Set current roles - map all possible roles
     selectedRoles.value = {
       'Admin': user.admin ?? false,
-      'Tray': user.tray ?? false,
       'Tray Assigner': user.trayPick ?? false,
       'Picker': user.picker ?? false,
       'Picker Manager': user.pickMan ?? false,
       'Checker': user.checker ?? false,
       'Packer': user.packer ?? false,
+      'Merger':user.tray ?? false,
       'Solver': user.solver ?? false,
     };
+
+    // Set current company and branch
+    selectedCompanyId.value = int.tryParse(user.coId!) ?? 0;
+    selectedBranchId.value = int.tryParse(user.brchId!) ?? 0;
+
+    // Load branch list if company is selected
+    if (selectedCompanyId.value != 0) {
+      await loadBranchList(selectedCompanyId.value);
+      showBranchDropdown.value = await shouldShowBranchDropdown();
+      print("----------- >${showBranchDropdown.value}");
+
+    } else {
+      showBranchDropdown.value = false;
+    }
 
     Get.dialog(
       RoleAssignmentDialog(controller: this),
       barrierDismissible: false,
     );
   }
+
+
+  Future<void> loadCompanyList() async {
+
+    try {
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}company'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userid': loginData?.response?.empId?.toString() ?? '0',
+          'useas': '1',
+          'companyid': loginData?.response?.coId?.toString() ?? '0',
+          'branchid': loginData?.response?.brchId?.toString() ?? '0',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      print("📩 Raw Response Body: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        print("📦 Decoded JSON: $data");
+
+        final companyResponse = CompanyListModel.fromJson(data);
+
+        print("✅ Parsed Company Response: ${companyResponse.toJson()}");
+
+        if (companyResponse.status == '200' && companyResponse.response != null) {
+          companyList.value = [
+            {'id': 0, 'name': 'ALL COMPANY'}, // Always at 0 index
+          ];
+
+          companyResponse.response?.forEach((company) {
+            companyList.value.add({
+              'id': company.companyid,
+              'name': company.companyname,
+            });
+          });
+
+          print("🏢 Loaded Companies: ${companyList.length}");
+        } else {
+          // print('⚠️ Response status: ${companyResponse.status}');
+          Get.snackbar('Error', 'Failed to load companies');
+        }
+      } else {
+        print("❌ API returned status: ${response.statusCode}");
+      }
+    } catch (e, stacktrace) {
+      print('🔥 Company API Error: $e');
+      print('📌 Stacktrace: $stacktrace');
+      Get.snackbar('Error', 'Failed to load companies');
+    }
+  }
+
+  Future<void> onCompanySelected(int companyId) async {
+    selectedBranchId.value = 0; // Reset branch selection
+
+
+
+    if (companyId != 0) {
+      await loadBranchList(companyId);
+      showBranchDropdown.value = await shouldShowBranchDropdown();
+      print("----------- >${showBranchDropdown.value}");
+
+    } else {
+      showBranchDropdown.value = false;
+      branchList.clear();
+    }
+  }
+
+  Future<void> loadBranchList(int companyId) async {
+    branchList.clear();
+
+    try {
+      final apiConfig = await ApiConfig.load();
+
+      final response = await http.post(
+        Uri.parse('${apiConfig.baseUrl}branch'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'companyid': companyId.toString(),
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final branchResponse = BranchListModel.fromJson(data);
+
+        if (branchResponse.status == '200' && branchResponse.response != null) {
+          branchList.value = [
+            {'id': 0, 'name': 'ALL Branch'}, // Always at 0 index
+          ];
+          branchResponse.response?.forEach((brch) {
+            branchList.value.add({
+              'id': brch.brchid,
+              'name': brch.brchname,
+            });
+          });
+        } else {
+          Get.snackbar('Error', 'Failed to load branches');
+        }
+      }
+    } catch (e) {
+      print('Branch API Error: $e');
+      Get.snackbar('Error', 'Failed to load branches');
+    }
+
+
+  }
+
+  Future<bool> shouldShowBranchDropdown() async {
+    final workingBranch = await ApiConfig.getSyn("WorkingWithBrch");
+    return workingBranch != 0 && branchList.isNotEmpty;
+  }
+
+
+
+
 
   // Updated API implementation for user update
   Future<void> updateUser() async {
@@ -311,15 +445,14 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
           'picker': getCheckboxStatus(selectedRoles['Picker'] ?? false),
           'checker': getCheckboxStatus(selectedRoles['Checker'] ?? false),
           'solver': getCheckboxStatus(selectedRoles['Solver'] ?? false),
-          'tray': getCheckboxStatus(selectedRoles['Tray'] ?? false),
+          'tray': getCheckboxStatus(selectedRoles['Merger'] ?? false),
           'pickman': getCheckboxStatus(selectedRoles['Picker Manager'] ?? false),
           'packer': getCheckboxStatus(selectedRoles['Packer'] ?? false),
           'traypick': getCheckboxStatus(selectedRoles['Tray Assigner'] ?? false),
-          'companyid': LoginController.selectedCompanyId, // You may need to get this dynamically
-          'brchid': LoginController.selectedBranchId, // You may need to get this dynamically
+          'companyid': selectedCompanyId.value,
+          'brchid': selectedBranchId.value,
         },
       };
-
       print('Assign Roles Request Body: ${jsonEncode(requestBody)}'); // Debug log
 
       final response = await http.post(
@@ -345,6 +478,7 @@ class AdminController extends GetxController with GetSingleTickerProviderStateMi
     } catch (e) {
       Get.back(); // Close loading dialog
       _showErrorSnackbar('Network error: ${e.toString()}');
+      print('Network error: ${e.toString()}');
     }
   }
 

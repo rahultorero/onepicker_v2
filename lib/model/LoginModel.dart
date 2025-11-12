@@ -37,9 +37,10 @@ class UserGeneralData {
   bool? tray;
   bool? trayPick;
   int? brchId;
-  dynamic brchName; // Object in Java = dynamic in Dart
+  String? brchName; // Object in Java = dynamic in Dart
   int? coId;
   String? coName;
+  int? brk;
   bool? locked;
   int? selectedCompanyID;
   int? selectedBranchID;
@@ -65,6 +66,7 @@ class UserGeneralData {
     this.selectedCompanyID,
     this.selectedBranchID,
     this.selectedFloorID,
+    this.brk
   });
 
   factory UserGeneralData.fromJson(Map<String, dynamic> json) => UserGeneralData(
@@ -84,9 +86,9 @@ class UserGeneralData {
     coId: int.tryParse(json['CoId']?.toString() ?? ''),
     coName: json['CoName'],
     locked: json['Locked'],
-    selectedCompanyID: int.tryParse(json['selectedCompanyID']?.toString() ?? ''),
-    selectedBranchID: int.tryParse(json['selectedBranchID']?.toString() ?? ''),
-    selectedFloorID: int.tryParse(json['selectedFloorID']?.toString() ?? ''),
+    selectedCompanyID: int.tryParse(json['CoId']?.toString() ?? ''),
+    selectedBranchID: int.tryParse(json['BrchId']?.toString() ?? ''),
+    selectedFloorID: int.tryParse(json['brk']?.toString() ?? ''),
   );
 
   Map<String, dynamic> toJson() => {

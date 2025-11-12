@@ -10,6 +10,7 @@ import '../controllers/PackerController.dart';
 import '../model/PickerDataModel.dart';
 import '../model/PickerListDetailModel.dart';
 import '../theme/AppTheme.dart';
+import 'CustomerDetailsDialog.dart';
 
 class PackerDetailsScreen extends StatelessWidget {
   final PickerData packerData;
@@ -32,26 +33,38 @@ class PackerDetailsScreen extends StatelessWidget {
           onPressed: () => Get.back(),
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Packer Details',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
+        title: GestureDetector(
+          onTap: () {
+            // Example usage - replace with your actual data
+            CustomerDetailsDialog.showCustomerDialog(
+              context: context,
+              name: packerData.party!,
+              address: packerData.lMark!,
+              city: packerData.city!,
+              area: packerData.area!,
+            );
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Packer Details',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
               ),
-            ),
-            Text(
-              '${packerData.invNo} - ${packerData.trayNo}',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.white70,
-                fontWeight: FontWeight.w500,
+              Text(
+                '${packerData.invNo} - ${packerData.trayNo}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           Container(
@@ -455,7 +468,7 @@ class PackerDetailCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: AppTheme.goldGradient,
+                              colors: AppTheme.bronzeGradient,
                             ),
                             borderRadius: BorderRadius.circular(6),
                           ),
@@ -482,7 +495,9 @@ class PackerDetailCard extends StatelessWidget {
                           child: _buildCompactDetail(
                             Icons.batch_prediction,
                             detail.batchNo ?? 'N/A',
-                            AppTheme.lavender,
+                            (detail.bCount ?? 0) > 1
+                                ? Colors.pinkAccent // when bCount > 1
+                                : AppTheme.lavender,
                             isSelected,
                           ),
                         ),
@@ -506,7 +521,9 @@ class PackerDetailCard extends StatelessWidget {
                           child: _buildCompactDetail(
                             Icons.currency_rupee,
                             detail.mrp != null ? '₹${detail.mrp}' : 'N/A',
-                            AppTheme.accentGreen,
+                            (detail.mCount ?? 0) > 1
+                                ? Colors.pinkAccent // when bCount > 1
+                                : AppTheme.accentGreen,
                             isSelected,
                           ),
                         ),

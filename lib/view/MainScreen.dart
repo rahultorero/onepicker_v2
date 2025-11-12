@@ -17,6 +17,8 @@ class MainScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(MainScreenController());
 
+
+
     return Scaffold(
       backgroundColor: AppTheme.background,
       extendBody: true,
@@ -59,7 +61,11 @@ class MainScreen extends StatelessWidget {
         },
       ),
 
-      bottomNavigationBar: _buildFloatingBottomNav(controller),
+      bottomNavigationBar: Obx(() =>
+      controller.isAdmin
+          ? _buildFloatingBottomNav(controller)
+          : const SizedBox.shrink()
+      ),
     );
   }
 

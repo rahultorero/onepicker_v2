@@ -262,28 +262,59 @@ class PackerScreen extends StatelessWidget {
   }
 
   Widget _buildPackerGrid(PackerController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 1.1,
-          crossAxisSpacing: 8,
-          mainAxisSpacing: 8,
-        ),
-        itemCount: controller.filteredPackerList.length,
-        itemBuilder: (context, index) {
-          final packerData = controller.filteredPackerList[index];
-          return CompactPackerCard(
-            packerData: packerData,
-            index: index,
-            onTap: () => controller.onPackerItemTap(packerData),
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final isTablet = screenWidth >= 600;
+
+        // Calculate columns based on screen size
+        final crossAxisCount = isTablet
+            ? (screenWidth >= 1000 ? 6 : 5)
+            : 3;
+
+        // Dynamic spacing
+        final spacing = isTablet ? 12.0 : 8.0;
+
+        // ⭐ KEY SOLUTION: Fixed height for cards
+        // This ensures consistent appearance across all devices
+        final cardHeight = isTablet ? 150.0 : 150.0;
+
+        // Calculate available width per card
+        final horizontalPadding = 24.0; // 12 * 2
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final availableWidth = screenWidth - horizontalPadding - totalSpacing;
+        final cardWidth = availableWidth / crossAxisCount;
+
+        // Calculate aspect ratio dynamically based on actual dimensions
+        final childAspectRatio = cardWidth / cardHeight;
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+            ),
+            itemCount: controller.filteredPackerList.length,
+            itemBuilder: (context, index) {
+              final packerData = controller.filteredPackerList[index];
+              return CompactPackerCard(
+                packerData: packerData,
+                index: index,
+                onTap: () => controller.onPackerItemTap(packerData),
+              );
+            },
+          ),
+        );
+      },
     );
   }
+
 }
+
+
 class CompactPackerCard extends StatefulWidget {
   final PickerData packerData;
   final int index;
@@ -301,6 +332,46 @@ class CompactPackerCard extends StatefulWidget {
 }
 
 class _CompactPackerCardState extends State<CompactPackerCard> {
+  Color _getIconColor() {
+    final delType = widget.packerData.delType?.toUpperCase() ?? '';
+
+    switch (delType) {
+      case 'URGENT':
+        return const Color(0xFFFF6B6B); // Coral Red - warm, attention-grabbing
+      case 'PICK-UP':
+        return const Color(0xFF4ECDC4); // Turquoise Green - fresh, calming
+      case 'DELIVERY':
+        return const Color(0xFFFFBE0B); // Vibrant Amber - energetic, warm
+      case 'MEDREP':
+        return const Color(0xFFFB8500); // Burnt Orange - professional, distinctive
+      case 'COD':
+        return const Color(0xFF8367C7); // Lavender Purple - elegant, modern
+      case 'OUTSTATION':
+        return const Color(0xFF219EBC); // Ocean Blue - trustworthy, deep
+      default:
+        return const Color(0xFF457B9D); // Steel Blue - sophisticated neutral
+    }
+  }
+
+  Color _getGradientColor() {
+    final baseColor = _getIconColor();
+    // Create a slightly darker/lighter gradient color
+    return Color.fromARGB(
+      baseColor.alpha,
+      (baseColor.red * 0.8).round(),
+      (baseColor.green * 0.9).round(),
+      (baseColor.blue * 1.1).round().clamp(0, 255),
+    );
+  }
+
+  // Get card background gradient colors using glassmorphic style
+  List<Color> _getCardGradientColors() {
+    return [
+      Colors.white.withOpacity(0.9),
+      Colors.white.withOpacity(0.7),
+    ];
+  }
+
   Color _getBackgroundColor() {
     final delType = widget.packerData.delType?.toUpperCase() ?? '';
 
@@ -419,141 +490,245 @@ class _CompactPackerCardState extends State<CompactPackerCard> {
 
   Widget _buildTraySection() {
     final trayNumbers = _getTrayNumbers();
+    final iconColor = _getIconColor();
+    final gradientColor = _getGradientColor();
 
     if (trayNumbers.isEmpty) {
-      return _buildSingleTrayRow('N/A', false);
+      return _buildSingleTrayRow('N/A', false, iconColor, gradientColor);
     }
 
     if (trayNumbers.length == 1) {
-      return _buildSingleTrayRow(trayNumbers.first, false);
+      return _buildSingleTrayRow(trayNumbers.first, false, iconColor, gradientColor);
     }
 
     // Multiple trays - show first one and count with tap to show modal
     return _buildSingleTrayRow(
       '${trayNumbers.first} (+${trayNumbers.length - 1} more)',
       true,
+      iconColor,
+      gradientColor,
     );
   }
 
-  Widget _buildSingleTrayRow(String displayText, bool canExpand) {
+  Widget _buildSingleTrayRow(String displayText, bool canExpand, Color iconColor, Color gradientColor) {
     return GestureDetector(
       onTap: canExpand ? _showTrayModal : null,
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  Icons.inventory_2,
-                  size: 13,
-                  color: AppTheme.amberGold,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.white.withOpacity(0.8),
+              Colors.white.withOpacity(0.6),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.7),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: iconColor.withOpacity(0.15),
+              blurRadius: 4,
+              spreadRadius: 0,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [iconColor, gradientColor],
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    displayText,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (canExpand) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    Icons.open_in_new,
-                    size: 14,
-                    color: AppTheme.amberGold,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withOpacity(0.3),
+                    blurRadius: 4,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 1),
                   ),
                 ],
-              ],
+              ),
+              child: const Icon(
+                Icons.inventory_2,
+                size: 12,
+                color: Colors.white,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                displayText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (canExpand) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [iconColor, gradientColor],
+                  ),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Icon(
+                  Icons.open_in_new,
+                  size: 10,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final iconColor = _getIconColor();
+    final gradientColor = _getGradientColor();
+
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(8),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: _getCardGradientColors(),
+        ),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppTheme.shadowColor.withOpacity(0.1),
-          width: 1,
+          color: Colors.white.withOpacity(0.8),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.shadowColor.withOpacity(0.05),
-            blurRadius: 4,
+            color: iconColor.withOpacity(0.25),
+            blurRadius: 10,
             spreadRadius: 0,
-            offset: const Offset(0, 1),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           onTap: widget.onTap,
-          splashColor: AppTheme.primaryTeal.withOpacity(0.1),
-          highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
+          splashColor: iconColor.withOpacity(0.1),
+          highlightColor: iconColor.withOpacity(0.05),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
               children: [
-                // Invoice Number with DelType Color Background
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getBackgroundColor(),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    widget.packerData.invNo ?? 'N/A',
-                    style: TextStyle(
-                      color: _getTextColor(),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Tray section with modal display for multiple trays
+                // 1. Tray section at the top
                 _buildTraySection(),
 
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
 
-                // Time
+                // 2. Invoice Number
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 12,
-                      color: AppTheme.lightTeal,
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [iconColor, gradientColor],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: iconColor.withOpacity(0.3),
+                            blurRadius: 4,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.receipt_long,
+                        size: 12,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
+                    Flexible(
+                      child: Text(
+                        widget.packerData.invNo ?? 'N/A',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 10),
+
+                // 3. Time at the bottom
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [iconColor, gradientColor],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: iconColor.withOpacity(0.3),
+                            blurRadius: 4,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.access_time,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
                     Text(
                       widget.packerData.iTime ?? 'N/A',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
                       ),
                     ),
                   ],

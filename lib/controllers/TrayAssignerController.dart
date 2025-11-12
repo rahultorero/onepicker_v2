@@ -39,6 +39,7 @@ class TrayAssignerController extends GetxController {
 
   // Individual tray number controllers for each item
   var trayNumberControllers = <int, TextEditingController>{}.obs;
+  var trayFocusNodes = <int, FocusNode>{}.obs;
 
   // API parameters
   int companyId = 1;
@@ -68,13 +69,25 @@ class TrayAssignerController extends GetxController {
     super.onInit();
     fetchTrayAssignerList();
     loadGlobalScanList();
+    loadMultiTraySetting();
+  }
+
+  void loadMultiTraySetting() async {
+    final trayValue = await ApiConfig.getSyn("MultiTray");
+    print("MultiTray setting loaded: ${trayValue}");
+
+    multiTraySetting.value = int.tryParse(trayValue.toString())!;
+    print("MultiTray setting loaded: ${multiTraySetting.value}");
   }
 
   @override
   void onClose() {
-    // Dispose all controllers
+    // Dispose all controllers and focus nodes
     for (var controller in trayNumberControllers.values) {
       controller.dispose();
+    }
+    for (var focusNode in trayFocusNodes.values) {
+      focusNode.dispose();
     }
     mobileScannerController?.dispose();
     super.onClose();
@@ -90,6 +103,27 @@ class TrayAssignerController extends GetxController {
     }
   }
 
+  TextEditingController getTrayController(int itemId) {
+    if (!trayNumberControllers.containsKey(itemId)) {
+      trayNumberControllers[itemId] = TextEditingController();
+    }
+
+    // Also create focus node if not exists
+    if (!trayFocusNodes.containsKey(itemId)) {
+      trayFocusNodes[itemId] = FocusNode();
+    }
+
+    return trayNumberControllers[itemId]!;
+  }
+
+  // Add getter for focus node
+  FocusNode getTrayFocusNode(int itemId) {
+    if (!trayFocusNodes.containsKey(itemId)) {
+      trayFocusNodes[itemId] = FocusNode();
+    }
+    return trayFocusNodes[itemId]!;
+  }
+
   void saveGlobalScanList() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -103,6 +137,9 @@ class TrayAssignerController extends GetxController {
   Future<void> fetchTrayAssignerList() async {
     try {
       print("🚀 fetchTrayAssignerList started...");
+
+      final trayValue = await ApiConfig.getSyn("MultiTray");
+      print("check the trayy valuess ${trayValue}");
 
       isLoading(true);
       print("⏳ isLoading set to true");
@@ -184,6 +221,13 @@ class TrayAssignerController extends GetxController {
 
   // Fetch search filter list from API
   Future<void> fetchSearchFilterList(String searchType) async {
+
+    if (searchType.trim().toLowerCase() == "all") {
+      print("✅ Matched condition: searchType == 'All'");
+      fetchTrayAssignerList();
+      return;
+    }
+
     try {
       isSearchLoading(true);
 
@@ -213,6 +257,7 @@ class TrayAssignerController extends GetxController {
 
         if (filterResponse.status == "200" && filterResponse.searchDataList != null) {
           searchFilterList.value = filterResponse.searchDataList!;
+          searchWithFilter();
         } else {
           Get.snackbar('Error', filterResponse.message ?? 'Failed to load filters');
         }
@@ -220,7 +265,6 @@ class TrayAssignerController extends GetxController {
     } catch (e, s) {
       print('🔥 fetchSearchFilterList error: $e');
       print('📌 Stacktrace: $s');
-      Get.snackbar('Error', 'Failed to fetch search filters: $e');
     } finally {
       isSearchLoading(false);
     }
@@ -398,14 +442,6 @@ class TrayAssignerController extends GetxController {
   }
 
   // Get tray numbers list for specific item
-  TextEditingController getTrayController(int itemId) {
-    if (!trayNumberControllers.containsKey(itemId)) {
-      trayNumberControllers[itemId] = TextEditingController();
-    }
-    return trayNumberControllers[itemId]!;
-  }
-
-  // Get tray numbers list for specific item
   List<String> getTrayNumbers(int itemId) {
     if (!itemTrayNumbers.containsKey(itemId)) {
       return [];
@@ -490,6 +526,7 @@ class TrayAssignerController extends GetxController {
 
   // Add tray number with validation
   void addTrayNumber(int itemId, String trayNumber) {
+
     _initializeTrayNumbers(itemId);
     final trayList = itemTrayNumbers[itemId]!;
 
@@ -502,8 +539,22 @@ class TrayAssignerController extends GetxController {
     // Check if already exists in global scan list
     if (globalScanList.contains(trayNumber)) {
       setErrorMessage(itemId, "Tray already exists in system.");
+      print("alreadyyy addeddd");
+
+      // Show snackbar
+      Get.snackbar(
+        'Already Added',
+        'Tray $trayNumber already exists in system.',
+        snackPosition: SnackPosition.TOP,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+        icon: const Icon(Icons.warning, color: Colors.white),
+      );
+
       return;
     }
+
 
     // Add to current item's tray list
     trayList.add(trayNumber);
@@ -521,10 +572,84 @@ class TrayAssignerController extends GetxController {
     // Update UI
     update(['trays_$itemId', 'submit_$itemId']);
 
-    // If single tray mode, auto-submit
+    // FIXED: Check for single tray mode (0), auto-submit immediately
     if (multiTraySetting.value == 0) {
       final item = filteredTrayList.firstWhere((element) => element.sIId == itemId);
-      handleManualSubmit(item);
+      _autoSubmitSingleTray(item);
+    }
+  }
+
+  void _autoSubmitSingleTray(TrayAssignerData item) async {
+    final itemId = item.sIId ?? 0;
+    final trayList = getTrayNumbers(itemId);
+
+    if (trayList.isNotEmpty) {
+      // Store next item reference BEFORE API call
+      final currentIndex = filteredTrayList.indexWhere((e) => e.sIId == itemId);
+      final nextItem = (currentIndex >= 0 && currentIndex < filteredTrayList.length - 1)
+          ? filteredTrayList[currentIndex + 1]
+          : null;
+
+      final trayListString = trayList.join(',');
+      await postAssignTray(item, trayListString, trayList.length);
+
+
+      // Small delay to ensure UI has processed the update
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      if (nextItem != null && filteredTrayList.isNotEmpty) {
+        _focusSpecificItem(nextItem);
+      } else {
+        Get.back();
+        fetchSearchFilterList(selectedFilterType.value);
+      }
+    }
+  }
+
+  void _focusSpecificItem(TrayAssignerData item) {
+    final itemId = item.sIId ?? 0;
+
+    Future.delayed(const Duration(milliseconds: 300), () {
+      final focusNode = getTrayFocusNode(itemId);
+
+      if (focusNode.canRequestFocus) {
+        focusNode.requestFocus();
+        print("✅ Focus requested for item: $itemId");
+      } else {
+        print("❌ Cannot request focus for item: $itemId");
+      }
+    });
+  }
+
+
+  void _focusNextItem() {
+    // Find the next item in the filtered list
+    if (filteredTrayList.isNotEmpty) {
+      final nextItem = filteredTrayList.first;
+      final nextItemId = nextItem.sIId ?? 0;
+
+      // Focus on the next item's tray focus node
+      final nextFocusNode = getTrayFocusNode(nextItemId);
+
+      // Use Future.delayed to ensure the UI has updated before requesting focus
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (nextFocusNode.canRequestFocus) {
+          nextFocusNode.requestFocus();
+
+          // Optional: Show a brief indicator of which item is now active
+          // Get.snackbar(
+          //   'Next Invoice',
+          //   'Ready to scan tray for ${nextItem.invNo}',
+          //   snackPosition: SnackPosition.TOP,
+          //   backgroundColor: AppTheme.primaryTeal,
+          //   colorText: Colors.white,
+          //   duration: const Duration(seconds: 1),
+          // );
+        }
+      });
+    }else{
+      Get.back();
+      fetchSearchFilterList(selectedFilterType.value);
     }
   }
 
@@ -605,7 +730,6 @@ class TrayAssignerController extends GetxController {
 
         if (data['status'] == "200") {
           final itemId = item.sIId ?? 0;
-          clearTrayNumbers(itemId);
 
           filteredTrayList.removeWhere((element) => element.sIId == itemId);
           trayAssignerList.removeWhere((element) => element.sIId == itemId);
@@ -749,8 +873,12 @@ class TrayAssignerController extends GetxController {
               if (value.isNotEmpty) {
                 final formattedValue = formatTrayNumber(value);
                 if (formattedValue.isNotEmpty) {
-                  addTrayNumber(item.sIId ?? 0, formattedValue);
                   Get.back();
+
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    addTrayNumber(item.sIId ?? 0, formattedValue);
+                  });
+
                 } else {
                   Get.snackbar(
                     'Invalid Input',
@@ -774,10 +902,11 @@ class TrayAssignerController extends GetxController {
 }
 
 // Enhanced QR Scanner Page with focused scanning area
+// Enhanced QR Scanner Page with focused scanning area
 class EnhancedQRScannerPage extends StatefulWidget {
-  final TrayAssignerData item;
+  TrayAssignerData item;
 
-  const EnhancedQRScannerPage({Key? key, required this.item}) : super(key: key);
+  EnhancedQRScannerPage({Key? key, required this.item}) : super(key: key);
 
   @override
   State<EnhancedQRScannerPage> createState() => _EnhancedQRScannerPageState();
@@ -789,6 +918,8 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
   late MobileScannerController scannerController;
   final TrayAssignerController trayController = Get.find<TrayAssignerController>();
 
+  late Rx<TrayAssignerData> currentItem;
+
   bool isFlashOn = false;
   bool isProcessing = false;
   String? lastScannedCode;
@@ -797,6 +928,8 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
   @override
   void initState() {
     super.initState();
+    currentItem = widget.item.obs; // Initialize with the passed item
+
     WidgetsBinding.instance.addObserver(this);
     scannerController = MobileScannerController(
       detectionSpeed: DetectionSpeed.noDuplicates,
@@ -824,7 +957,7 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
-    final scanningAreaSize = screenSize.width * 0.7; // 70% of screen width
+    final scanningAreaSize = screenSize.width * 0.7;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -889,15 +1022,15 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
 
                   // Title
                   Expanded(
-                    child: Text(
-                      'Scan QR - ${widget.item.invNo}',
+                    child: Obx(() => Text(
+                      'Scan QR - ${currentItem.value.invNo}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
-                    ),
+                    )),
                   ),
 
                   // Flash button
@@ -918,7 +1051,7 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
 
           // Scanning instruction text
           Positioned(
-            top: MediaQuery.of(context).size.height * 0.25,
+            top: MediaQuery.of(context).size.height * 0.21,
             left: 20,
             right: 20,
             child: Container(
@@ -927,10 +1060,10 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
                 color: Colors.black54,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
+              child: const Text(
                 'Position one QR code in the square frame',
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -939,7 +1072,7 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
             ),
           ),
 
-          // Enhanced bottom section with tray list and send button
+          // Enhanced bottom section - SCROLLABLE
           Positioned(
             bottom: 0,
             left: 0,
@@ -947,7 +1080,7 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
             child: SafeArea(
               child: Container(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.45,
+                  maxHeight: MediaQuery.of(context).size.height * 0.33,
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -975,234 +1108,396 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
                       ),
                     ),
 
-                    // Instruction text
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        isProcessing
-                            ? 'Processing QR code...'
-                            : 'Scan QR codes one by one or add manually',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
+                    // Scrollable content
+                    Flexible(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Invoice Details Card - MOVED TO TOP
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Obx(() {
+                                final item = currentItem.value;
+                                final deliveryType = item.delType ?? '';
+                                final cardColors = _getDeliveryTypeColors(deliveryType);
 
-                    const SizedBox(height: 16),
-
-                    // Action buttons row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Row(
-                        children: [
-                          // Manual input button
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => trayController.openManualTrayInput(widget.item),
-                              icon: const Icon(Icons.keyboard, size: 18),
-                              label: const Text('Manual'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.grey[700],
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(width: 12),
-
-                          // Flash toggle button
-                          ElevatedButton.icon(
-                            onPressed: _toggleFlash,
-                            icon: Icon(isFlashOn ? Icons.flash_on : Icons.flash_off, size: 18),
-                            label: Text(isFlashOn ? 'Flash On' : 'Flash Off'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: isFlashOn ? AppTheme.primaryTeal : Colors.grey[700],
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Added tray numbers section
-                    GetBuilder<TrayAssignerController>(
-                      id: 'trays_${widget.item.sIId}',
-                      builder: (controller) {
-                        final trayList = controller.getTrayNumbers(widget.item.sIId ?? 0);
-
-                        if (trayList.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey[800]?.withOpacity(0.5),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.info_outline, color: Colors.grey, size: 20),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    'No trays added yet',
-                                    style: TextStyle(color: Colors.grey, fontSize: 14),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Container(
-                          constraints: const BoxConstraints(maxHeight: 120),
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[800]?.withOpacity(0.7),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.inventory, color: Colors.white, size: 18),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Added Trays (${trayList.length})',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        Colors.grey[850]!.withOpacity(0.95),
+                                        Colors.grey[900]!.withOpacity(0.95),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: cardColors['primary']!.withOpacity(0.3),
+                                      width: 1.5,
                                     ),
                                   ),
-                                  const Spacer(),
-                                  if (trayList.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () => controller.clearTrayNumbers(widget.item.sIId ?? 0),
-                                      child: const Icon(
-                                        Icons.clear_all,
-                                        color: Colors.red,
-                                        size: 20,
-                                      ),
-                                    ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 8),
-
-                              Expanded(
-                                child: ListView.builder(
-                                  itemCount: trayList.length,
-                                  itemBuilder: (context, index) {
-                                    final trayNumber = trayList[index];
-                                    return Container(
-                                      margin: const EdgeInsets.only(bottom: 4),
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryTeal.withOpacity(0.8),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Header Row - Compact
+                                      Row(
                                         children: [
-                                          const Icon(Icons.qr_code, color: Colors.white, size: 16),
-                                          const SizedBox(width: 8),
-                                          Expanded(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: cardColors['primary'],
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
                                             child: Text(
-                                              trayNumber,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w500,
-                                                fontSize: 13,
+                                              deliveryType,
+                                              style: TextStyle(
+                                                color: cardColors['primaryText'],
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 9,
                                               ),
                                             ),
                                           ),
-                                          GestureDetector(
-                                            onTap: () => controller.removeTrayNumber(
-                                              widget.item.sIId ?? 0,
-                                              trayNumber,
-                                            ),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(4),
-                                              decoration: const BoxDecoration(
-                                                color: Colors.red,
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: const Icon(
-                                                Icons.close,
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              item.invNo ?? '',
+                                              style: const TextStyle(
                                                 color: Colors.white,
-                                                size: 12,
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w700,
                                               ),
+                                            ),
+                                          ),
+                                          Text(
+                                            ApiConfig.dateConvert(item.invDate) ?? '',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.7),
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
 
-                    const SizedBox(height: 16),
+                                      const SizedBox(height: 8),
 
-                    // Send button
-                    GetBuilder<TrayAssignerController>(
-                      id: 'submit_${widget.item.sIId}',
-                      builder: (controller) {
-                        final trayList = controller.getTrayNumbers(widget.item.sIId ?? 0);
-                        final canSend = trayList.isNotEmpty;
+                                      // Party Name - Compact
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.all(4),
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryTeal.withOpacity(0.2),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Icon(
+                                              Icons.business_rounded,
+                                              size: 12,
+                                              color: AppTheme.primaryTeal,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              item.party ?? '',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
 
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: canSend
-                                  ? () {
-                                Get.back(); // Close scanner
-                                controller.handleManualSubmit(widget.item);
-                              }
-                                  : null,
-                              icon: Icon(
-                                Icons.send,
-                                color: canSend ? Colors.white : Colors.grey,
-                              ),
-                              label: Text(
-                                canSend
-                                    ? 'Send Trays (${trayList.length})'
-                                    : 'Add trays to send',
-                                style: TextStyle(
-                                  color: canSend ? Colors.white : Colors.grey,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: canSend
-                                    ? AppTheme.primaryTeal
-                                    : Colors.grey[700],
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                                      const SizedBox(height: 6),
+
+                                      // Location and Sales Rep - Compact
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.location_on_rounded,
+                                                  size: 10,
+                                                  color: AppTheme.coralPink.withOpacity(0.8),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    '${item.area ?? ''} ${item.city ?? ''}',
+                                                    style: TextStyle(
+                                                      color: Colors.white.withOpacity(0.8),
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                Icon(
+                                                  Icons.person_rounded,
+                                                  size: 10,
+                                                  color: AppTheme.sage.withOpacity(0.8),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    item.sman ?? '',
+                                                    style: TextStyle(
+                                                      color: Colors.white.withOpacity(0.8),
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 6),
+
+                                      // Items Count - Compact
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.info.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(
+                                              Icons.inventory_outlined,
+                                              size: 10,
+                                              color: AppTheme.info,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${item.lItem ?? 0} Items',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Action buttons row
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Row(
+                                children: [
+
+                                  ElevatedButton.icon(
+                                    onPressed: _toggleFlash,
+                                    icon: Icon(isFlashOn ? Icons.flash_on : Icons.flash_off, size: 16),
+                                    label: Text(isFlashOn ? 'On' : 'Off', style: const TextStyle(fontSize: 12)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isFlashOn ? AppTheme.primaryTeal : Colors.grey[700],
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
 
-                    const SizedBox(height: 20),
+                            const SizedBox(height: 12),
+
+                            // Tray numbers section
+                            Obx(() => GetBuilder<TrayAssignerController>(
+                              id: 'trays_${currentItem.value.sIId}',
+                              builder: (controller) {
+                                final trayList = controller.getTrayNumbers(currentItem.value.sIId ?? 0);
+
+                                if (trayList.isEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[800]?.withOpacity(0.5),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Row(
+                                        children: [
+                                          Icon(Icons.info_outline, color: Colors.grey, size: 18),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'No trays added yet',
+                                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                return Container(
+                                  constraints: const BoxConstraints(maxHeight: 100),
+                                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[800]?.withOpacity(0.7),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.inventory, color: Colors.white, size: 16),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Trays (${trayList.length})',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          if (trayList.isNotEmpty)
+                                            GestureDetector(
+                                              onTap: () => controller.clearTrayNumbers(currentItem.value.sIId ?? 0),
+                                              child: const Icon(Icons.clear_all, color: Colors.red, size: 18),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Expanded(
+                                        child: ListView.builder(
+                                          itemCount: trayList.length,
+                                          itemBuilder: (context, index) {
+                                            final trayNumber = trayList[index];
+                                            return Container(
+                                              margin: const EdgeInsets.only(bottom: 3),
+                                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryTeal.withOpacity(0.8),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.qr_code, color: Colors.white, size: 14),
+                                                  const SizedBox(width: 6),
+                                                  Expanded(
+                                                    child: Text(
+                                                      trayNumber,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.w500,
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  GestureDetector(
+                                                    onTap: () => controller.removeTrayNumber(
+                                                      currentItem.value.sIId ?? 0,
+                                                      trayNumber,
+                                                    ),
+                                                    child: Container(
+                                                      padding: const EdgeInsets.all(3),
+                                                      decoration: const BoxDecoration(
+                                                        color: Colors.red,
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.close,
+                                                        color: Colors.white,
+                                                        size: 10,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            )),
+
+                            const SizedBox(height: 12),
+
+                            // Send button
+                            Obx(() => GetBuilder<TrayAssignerController>(
+                              id: 'submit_${currentItem.value.sIId}',
+                              builder: (controller) {
+                                final trayList = controller.getTrayNumbers(currentItem.value.sIId ?? 0);
+                                final canSend = trayList.isNotEmpty;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      onPressed: canSend
+                                          ? () {
+                                        Get.back();
+                                        controller.handleManualSubmit(currentItem.value);
+                                      }
+                                          : null,
+                                      icon: Icon(
+                                        Icons.send,
+                                        color: canSend ? Colors.white : Colors.grey,
+                                        size: 18,
+                                      ),
+                                      label: Text(
+                                        canSend ? 'Send Trays (${trayList.length})' : 'Add trays to send',
+                                        style: TextStyle(
+                                          color: canSend ? Colors.white : Colors.grey,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: canSend ? AppTheme.primaryTeal : Colors.grey[700],
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            )),
+
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1211,6 +1506,48 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
         ],
       ),
     );
+  }
+
+
+// Add this helper method at the bottom of your _EnhancedQRScannerPageState class
+  Map<String, dynamic> _getDeliveryTypeColors(String deliveryType) {
+    switch (deliveryType.toUpperCase()) {
+      case 'URGENT':
+        return {
+          'primary': AppTheme.error,
+          'primaryText': Colors.white,
+        };
+      case 'PICK-UP':
+        return {
+          'primary': AppTheme.success,
+          'primaryText': Colors.white,
+        };
+      case 'DELIVERY':
+        return {
+          'primary': AppTheme.amberGold,
+          'primaryText': Colors.white,
+        };
+      case 'MEDREP':
+        return {
+          'primary': AppTheme.warning,
+          'primaryText': Colors.white,
+        };
+      case 'COD':
+        return {
+          'primary': AppTheme.lavender,
+          'primaryText': Colors.white,
+        };
+      case 'OUTSTATION':
+        return {
+          'primary': AppTheme.info,
+          'primaryText': Colors.white,
+        };
+      default:
+        return {
+          'primary': AppTheme.primaryTeal,
+          'primaryText': Colors.white,
+        };
+    }
   }
 
   void _handleQRScan(BarcodeCapture capture) async {
@@ -1286,7 +1623,7 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
           processedValue = trayController.formatTrayNumber(scannedValue);
         }
 
-        final existingTrays = trayController.getTrayNumbers(widget.item.sIId ?? 0);
+        final existingTrays = trayController.getTrayNumbers(currentItem.value.sIId ?? 0);
         if (existingTrays.contains(processedValue)) {
           // Tray already exists
           HapticFeedback.mediumImpact();
@@ -1299,23 +1636,28 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
             duration: const Duration(seconds: 2),
             icon: const Icon(Icons.warning, color: Colors.white),
           );
-        }else{
-          trayController.addTrayNumber(widget.item.sIId ?? 0, processedValue);
+        } else {
+          trayController.addTrayNumber(currentItem.value.sIId ?? 0, processedValue);
 
           // Provide haptic feedback for success
           HapticFeedback.lightImpact();
 
-          // Don't close the scanner, let user add more trays or manually send
-          Get.snackbar(
-            'Success',
-            'Tray added: $processedValue',
-            snackPosition: SnackPosition.TOP,
-            backgroundColor: Colors.green,
-            colorText: Colors.white,
-            duration: const Duration(seconds: 2),
-          );
+          // Check if single tray mode for continuous scanning
+          if (trayController.multiTraySetting.value == 0) {
+            // Wait for API call to complete, then switch to next item
+            await _waitForApiAndSwitchToNext();
+          } else {
+            // Multi-tray mode - show success message
+            Get.snackbar(
+              'Success',
+              'Tray added: $processedValue',
+              snackPosition: SnackPosition.TOP,
+              backgroundColor: Colors.green,
+              colorText: Colors.white,
+              duration: const Duration(seconds: 2),
+            );
+          }
         }
-
 
       } else {
         // Invalid QR code
@@ -1336,6 +1678,30 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
           isProcessing = false;
         });
       }
+    }
+  }
+
+  Future<void> _waitForApiAndSwitchToNext() async {
+    // Show processing message
+
+    // Wait for API to complete
+    while (trayController.isLoading.value) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
+    // After API completes, get the next item
+    if (trayController.filteredTrayList.isNotEmpty) {
+      final nextItem = trayController.filteredTrayList.first;
+
+      // Update both current item and widget item
+      currentItem.value = nextItem;
+      widget.item = nextItem;
+
+
+    } else {
+      // No more items, close scanner
+
+      Get.back();
     }
   }
 
@@ -1398,105 +1764,40 @@ class ScannerOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.black.withOpacity(0.5);
-
-    // Draw dark overlay
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), paint);
-
-    // Calculate scanner frame position
-    final left = (size.width - scanAreaSize) / 2;
-    final top = (size.height - scanAreaSize) / 2;
-
-    // Clear the scanning area
-    final clearPaint = Paint()
-      ..color = Colors.transparent
-      ..blendMode = BlendMode.clear;
-
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(left, top, scanAreaSize, scanAreaSize),
-        const Radius.circular(12),
-      ),
-      clearPaint,
+    final double scanAreaLeft = (size.width - scanAreaSize) / 2;
+    final double scanAreaTop = (size.height - scanAreaSize) / 2;
+    final Rect scanArea = Rect.fromLTWH(
+      scanAreaLeft,
+      scanAreaTop,
+      scanAreaSize,
+      scanAreaSize,
     );
 
-    // Draw border around scanning area
-    final borderPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3;
+    // Draw dark overlay AROUND the scanning area, not over it
+    final Path overlayPath = Path()
+      ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..addRect(scanArea)
+      ..fillType = PathFillType.evenOdd; // THIS IS CRITICAL
 
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(left, top, scanAreaSize, scanAreaSize),
-        const Radius.circular(12),
-      ),
-      borderPaint,
+    canvas.drawPath(
+      overlayPath,
+      Paint()..color = Colors.black.withOpacity(0.6),
     );
 
-    // Draw corner decorations
-    final cornerPaint = Paint()
-      ..color = borderColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-
-    const cornerLength = 25.0;
-
-    // Top-left corner
-    canvas.drawLine(
-      Offset(left - 2, top + cornerLength),
-      Offset(left - 2, top - 2),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(left - 2, top - 2),
-      Offset(left + cornerLength, top - 2),
-      cornerPaint,
-    );
-
-    // Top-right corner
-    canvas.drawLine(
-      Offset(left + scanAreaSize - cornerLength, top - 2),
-      Offset(left + scanAreaSize + 2, top - 2),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(left + scanAreaSize + 2, top - 2),
-      Offset(left + scanAreaSize + 2, top + cornerLength),
-      cornerPaint,
-    );
-
-    // Bottom-left corner
-    canvas.drawLine(
-      Offset(left - 2, top + scanAreaSize - cornerLength),
-      Offset(left - 2, top + scanAreaSize + 2),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(left - 2, top + scanAreaSize + 2),
-      Offset(left + cornerLength, top + scanAreaSize + 2),
-      cornerPaint,
-    );
-
-    // Bottom-right corner
-    canvas.drawLine(
-      Offset(left + scanAreaSize - cornerLength, top + scanAreaSize + 2),
-      Offset(left + scanAreaSize + 2, top + scanAreaSize + 2),
-      cornerPaint,
-    );
-    canvas.drawLine(
-      Offset(left + scanAreaSize + 2, top + scanAreaSize + 2),
-      Offset(left + scanAreaSize + 2, top + scanAreaSize - cornerLength),
-      cornerPaint,
+    // Draw the border around scanning area
+    canvas.drawRect(
+      scanArea,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
     );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate != this;
+  bool shouldRepaint(ScannerOverlayPainter oldDelegate) {
+    return oldDelegate.scanAreaSize != scanAreaSize ||
+        oldDelegate.borderColor != borderColor;
   }
 }
-
 

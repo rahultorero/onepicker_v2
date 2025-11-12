@@ -9,8 +9,10 @@ import '../model/PickerMenuDetailModel.dart';
 import '../model/StockDetailDataModel.dart';
 import '../model/StockDetailModel.dart';
 import '../theme/AppTheme.dart';
+import 'CustomerDetailsDialog.dart';
 
 class PickerListTab extends StatelessWidget {
+
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<PickerController>();
@@ -20,288 +22,423 @@ class PickerListTab extends StatelessWidget {
       color: AppTheme.primaryTeal,
       child: Obx(() {
         if (controller.isLoadingPickerList.value && controller.pickerList.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                LoadingIndicator(),
-                const SizedBox(height: 16),
-                const Text(
-                  'Loading picker list...',
-                  style: TextStyle(
-                    color: AppTheme.onSurface,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height - 100,
+
+              child: Center(
+                
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    LoadingIndicator(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Loading picker list...',
+                      style: TextStyle(
+                        color: AppTheme.onSurface,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         }
 
         if (controller.pickerList.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryTeal.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.inventory_2_outlined,
-                    size: 48,
-                    color: AppTheme.primaryTeal,
-                  ),
+          return SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height - 100,
+
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryTeal.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.inventory_2_outlined,
+                        size: 48,
+                        color: AppTheme.primaryTeal,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'No picker data available',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.onSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Pull down to refresh',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No picker data available',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Pull down to refresh',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppTheme.onSurface.withOpacity(0.6),
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         }
 
-        // Split Screen Layout - Changed to 70/30
-        return Column(
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  // Left Side - Picker List (30% of screen)
-                  Expanded(
-                    flex: 33,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // List
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            itemCount: controller.pickerList.length,
-                            itemBuilder: (context, index) {
-                              final pickerData = controller.pickerList[index];
-                              return Obx(() => CompactPickerCard(
-                                pickerData: pickerData,
-                                index: index,
-                                isSelected: controller.selectedPickerIndex.value == index,
-                                onTap: () => controller.onPickerItemSelect(index, pickerData),
-                              ));
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth >= 600;
 
-                  // Divider
-                  Container(
-                    width: 1,
-                    color: AppTheme.primaryTeal.withOpacity(0.2),
-                  ),
+            // Dynamic flex values based on device type
+            final leftFlex = isTablet ? 20 : 38;
+            final rightFlex = isTablet ? 80 : 70;
 
-                  // Right Side - Details (70% of screen)
-                  Expanded(
-                    flex: 70,
-                    child: Stack( // Changed from Container to Stack
-                      children: [
-                        Container(
-                          color: AppTheme.surface.withOpacity(0.3),
-                          child: Obx(() {
-                            if (controller.selectedPickerIndex.value == -1) {
-                              return const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.touch_app,
-                                      size: 48,
-                                      color: AppTheme.primaryTeal,
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'Select a picker item',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.onSurface,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'Tap any item from the left\nto view its details',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppTheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (controller.isLoadingPickerDetails.value) {
-                              return const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      color: AppTheme.primaryTeal,
-                                      strokeWidth: 3,
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'Loading details...',
-                                      style: TextStyle(
-                                        color: AppTheme.onSurface,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            if (controller.pickerDetails.isEmpty) {
-                              return const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.inbox_outlined,
-                                      size: 48,
-                                      color: AppTheme.primaryTeal,
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'No details available',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-
-                            final selectedPicker = controller.pickerList[controller.selectedPickerIndex.value];
-
-                            return Column(
-                              children: [
-                                // Details Header
-                                Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
-                                    ),
+            // Split Screen Layout
+            return Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      // Left Side - Picker List (20% for tablet, 38% for mobile)
+                      Expanded(
+                        flex: leftFlex,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Search Bar
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Obx(
+                                    () => Text(
+                                  "${controller.filteredPickerList.length} Pending Deliver${controller.filteredPickerList.length == 1 ? 'y' : 'ies'}",
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blueGrey,
                                   ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.inventory_2,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                ),
+                              )
+                            ),
+
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: TextField(
+                                controller: controller.searchController,
+                                onChanged: controller.filterPickerList,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  hintText: 'Search by tray...',
+                                  suffixIcon: Obx(() => controller.searchQuery.value.isNotEmpty
+                                      ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      size: 20,
+                                      color: AppTheme.onSurface.withOpacity(0.6),
+                                    ),
+                                    onPressed: controller.clearSearch,
+                                  )
+                                      : const SizedBox()),
+                                  filled: true,
+                                  fillColor: AppTheme.surface.withOpacity(0.3),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  hintStyle: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.onSurface.withOpacity(0.5),
+                                  ),
+                                ),
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+
+                            // Picker List - Always single column
+                            Expanded(
+                              child: Obx(() => ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                itemCount: controller.filteredPickerList.length,
+                                itemBuilder: (context, index) {
+                                  final pickerData = controller.filteredPickerList[index];
+                                  final originalIndex = controller.pickerList.indexOf(pickerData);
+                                  return Obx(() => CompactPickerCard(
+                                    pickerData: pickerData,
+                                    index: originalIndex,
+                                    isSelected: controller.selectedPickerIndex.value == originalIndex,
+                                    onTap: () => controller.onPickerItemSelect(originalIndex, pickerData),
+                                  ));
+                                },
+                              )),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Divider
+                      Container(
+                        width: 1,
+                        color: AppTheme.primaryTeal.withOpacity(0.2),
+                      ),
+
+                      // Right Side - Details (80% for tablet, 70% for mobile)
+                      Expanded(
+                        flex: rightFlex,
+                        child: Stack(
+                          children: [
+                            Container(
+                              color: AppTheme.surface.withOpacity(0.3),
+                              child: Obx(() {
+                                if (controller.selectedPickerIndex.value == -1) {
+                                  return const Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.touch_app,
+                                          size: 48,
+                                          color: AppTheme.primaryTeal,
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'Select a picker item',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.onSurface,
+                                          ),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Tap any item from the left\nto view its details',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppTheme.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                if (controller.isLoadingPickerDetails.value) {
+                                  return const Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        CircularProgressIndicator(
+                                          color: AppTheme.primaryTeal,
+                                          strokeWidth: 3,
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'Loading details...',
+                                          style: TextStyle(
+                                            color: AppTheme.onSurface,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                if (controller.pickerDetails.isEmpty) {
+                                  return const Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.inbox_outlined,
+                                          size: 48,
+                                          color: AppTheme.primaryTeal,
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'No details available',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.onSurface,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }
+
+                                final selectedPicker = controller.pickerList[controller.selectedPickerIndex.value];
+
+                                return Column(
+                                  children: [
+                                    // Details Header
+                                    GestureDetector(
+                                      onTap: () {
+                                        CustomerDetailsDialog.showCustomerDialog(
+                                          context: context,
+                                          name: selectedPicker.party!,
+                                          address: selectedPicker.lMark!,
+                                          city: selectedPicker.city!,
+                                          area: selectedPicker.area!,
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
+                                          ),
+                                        ),
+                                        child: Row(
                                           children: [
-                                            Text(
-                                              'Tray NO: ${selectedPicker.trayNo ?? 'N/A'}',
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: Colors.white,
-                                              ),
+                                            const Icon(
+                                              Icons.inventory_2,
+                                              color: Colors.white,
+                                              size: 20,
                                             ),
-                                            Row(
-                                              children: [
-                                                Text(
-                                                  'Items: ${controller.pickerDetails.length}',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.white,
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Tray NO: ${selectedPicker.trayNo ?? 'N/A'}',
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: Colors.white,
+                                                    ),
                                                   ),
-                                                ),
-                                                const SizedBox(width: 16),
-                                                Text(
-                                                  'Selected: ${controller.selectedDetailIds.length}',
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.white,
-                                                    fontWeight: FontWeight.w600,
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        'Items: ${controller.pickerDetails.length}',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 16),
+                                                      Text(
+                                                        'Selected: ${controller.selectedDetailIds.length}',
+                                                        style: const TextStyle(
+                                                          fontSize: 12,
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
                                           ],
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                // Details List
-                                Expanded(
-                                  child: ListView.builder(
-                                    padding: const EdgeInsets.all(8),
-                                    itemCount: controller.pickerDetails.length,
-                                    itemBuilder: (context, index) {
-                                      final detail = controller.pickerDetails[index];
-                                      return Obx(() =>CompactDetailCard(
-                                        detail: detail,
-                                        index: index,
-                                        onSelectionChanged: controller.onDetailSelectionChanged,
-                                        isSelected: controller.selectedDetailIds.contains(detail.itemDetailId.toString()),
-                                        onTap: controller.showItemStockDetail,
-                                        onFetchStockDetail: controller.fetchStockDetail,
-                                        stockDetailList: controller.stockDetailList, // 👈 pass here
+                                    ),
 
-                                      )
-                                      );
-                                    },
-                                  ),
-                                ),
-                                // Removed FloatingSubmitButton from here
-                              ],
-                            );
-                          }),
+                                    // Details List - Grid for tablet, List for mobile
+                                    Expanded(
+                                      child:  _buildDetailList(controller),
+                                    ),
+                                  ],
+                                );
+                              }),
+                            ),
+                            FloatingSubmitButton(controller: controller),
+                          ],
                         ),
-                        FloatingSubmitButton(controller: controller), // Now properly positioned in Stack
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         );
       }),
     );
   }
-}
 
+// Detail List for Mobile
+  Widget _buildDetailList(PickerController controller) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: controller.pickerDetails.length,
+      itemBuilder: (context, index) {
+        final detail = controller.pickerDetails[index];
+        return Obx(() => CompactDetailCard(
+          detail: detail,
+          index: index,
+          onSelectionChanged: controller.onDetailSelectionChanged,
+          isSelected: controller.selectedDetailIds.contains("${detail.itemDetailId.toString()}${index}"),
+          onTap: controller.showItemStockDetail,
+          onFetchStockDetail: controller.fetchStockDetail,
+          stockDetailList: controller.stockDetailList,
+        ));
+      },
+    );
+  }
+
+// Detail Grid for Tablet
+  Widget _buildDetailGrid(PickerController controller, double availableWidth) {
+    // Calculate columns based on available width (now 80% of screen)
+    final crossAxisCount = availableWidth >= 1000 ? 3 : 1;
+
+    // Dynamic spacing
+    const spacing = 12.0;
+
+    // ⭐ KEY SOLUTION: Fixed height for cards
+    // Adjust this value based on your CompactDetailCard content
+    final cardHeight = 215.0;  // Set appropriate height for your card design
+
+    // Calculate available width per card
+    const horizontalPadding = 16.0; // 8 * 2
+    final totalSpacing = spacing * (crossAxisCount - 1);
+    final cardAvailableWidth = availableWidth - horizontalPadding - totalSpacing;
+    final cardWidth = cardAvailableWidth / crossAxisCount;
+
+    // Calculate aspect ratio dynamically based on actual dimensions
+    final childAspectRatio = cardWidth / cardHeight;
+
+    print("Picker Detail - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(8),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: spacing,
+        mainAxisSpacing: spacing,
+        childAspectRatio: childAspectRatio,
+      ),
+      itemCount: controller.pickerDetails.length,
+      itemBuilder: (context, index) {
+        final detail = controller.pickerDetails[index];
+        return Obx(() => CompactDetailCard(
+          detail: detail,
+          index: index,
+          onSelectionChanged: controller.onDetailSelectionChanged,
+          isSelected: controller.selectedDetailIds.contains("${detail.itemDetailId.toString()}$index"),
+          onTap: controller.showItemStockDetail,
+          onFetchStockDetail: controller.fetchStockDetail,
+          stockDetailList: controller.stockDetailList,
+        ));
+      },
+    );
+  }
+}
 
 
 
@@ -348,48 +485,44 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     super.dispose();
   }
 
-  Color _getBackgroundColor() {
+  Color _getIconColor() {
     final delType = widget.pickerData.delType?.toUpperCase() ?? '';
 
     switch (delType) {
       case 'URGENT':
-        return const Color(0xFFF50E0E); // Red
+        return const Color(0xFFFF6B6B); // Coral Red - warm, attention-grabbing
       case 'PICK-UP':
-        return const Color(0xFF15EE81); // Green
+        return const Color(0xFF4ECDC4); // Turquoise Green - fresh, calming
       case 'DELIVERY':
-        return const Color(0xFFFFB266); // Orange
+        return const Color(0xFFFFBE0B); // Vibrant Amber - energetic, warm
       case 'MEDREP':
-        return const Color(0xFFEAF207); // Yellow
+        return const Color(0xFFFB8500); // Burnt Orange - professional, distinctive
       case 'COD':
-        return const Color(0xFFFF99FF); // Pink
+        return const Color(0xFF8367C7); // Lavender Purple - elegant, modern
       case 'OUTSTATION':
-        return const Color(0xFF99FFFF); // Sky Blue
+        return const Color(0xFF219EBC); // Ocean Blue - trustworthy, deep
       default:
-        return Colors.white; // Default white
+        return const Color(0xFF457B9D); // Steel Blue - sophisticated neutral
     }
   }
 
-  List<Color> _getInvoiceGradientColors() {
-    final primaryColor = _getBackgroundColor();
-    return [
-      primaryColor.withOpacity(0.8),
-      primaryColor.withOpacity(0.6),
-    ];
+  Color _getGradientColor() {
+    final baseColor = _getIconColor();
+    // Create a slightly darker/lighter gradient color
+    return Color.fromARGB(
+      baseColor.alpha,
+      (baseColor.red * 0.8).round(),
+      (baseColor.green * 0.9).round(),
+      (baseColor.blue * 1.1).round().clamp(0, 255),
+    );
   }
 
-  // Get card background gradient colors
+  // Get card background gradient colors using glassmorphic style
   List<Color> _getCardGradientColors() {
-    final primaryColor = _getBackgroundColor();
     return [
-      primaryColor.withOpacity(0.03),
-      primaryColor.withOpacity(0.08),
-      primaryColor.withOpacity(0.12),
+      Colors.white.withOpacity(0.9),
+      Colors.white.withOpacity(0.7),
     ];
-  }
-
-  Color _getTextColor() {
-    final delType = widget.pickerData.delType?.toUpperCase() ?? '';
-    return delType == 'URGENT' ? Colors.white : Colors.black;
   }
 
   List<String> _getTrayNumbers() {
@@ -421,21 +554,25 @@ class _CompactPickerCardState extends State<CompactPickerCard>
 
   Widget _buildTraySection() {
     final trayNumbers = _getTrayNumbers();
+    final iconColor = _getIconColor();
+    final gradientColor = _getGradientColor();
 
     if (trayNumbers.isEmpty) {
-      return _buildSingleTrayRow('N/A', false);
+      return _buildSingleTrayRow('N/A', false, iconColor, gradientColor);
     }
 
     if (trayNumbers.length == 1) {
-      return _buildSingleTrayRow(trayNumbers.first, false);
+      return _buildSingleTrayRow(trayNumbers.first, false, iconColor, gradientColor);
     }
 
-    // Multiple trays - show first one and expand button
+    // Multiple trays - show first one with count, no arrow in main row
     return Column(
       children: [
         _buildSingleTrayRow(
-          '${trayNumbers.first} ${trayNumbers.length > 1 ? '(+${trayNumbers.length - 1})' : ''}',
+          '${trayNumbers.first} (+${trayNumbers.length - 1})',
           true,
+          iconColor,
+          gradientColor,
         ),
         AnimatedBuilder(
           animation: _expandAnimation,
@@ -451,39 +588,113 @@ class _CompactPickerCardState extends State<CompactPickerCard>
           child: Container(
             width: double.infinity,
             margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppTheme.amberGold.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.white.withOpacity(0.8),
+                  Colors.white.withOpacity(0.6),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: AppTheme.amberGold.withOpacity(0.3),
+                color: Colors.white.withOpacity(0.7),
                 width: 1,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: iconColor.withOpacity(0.2),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: trayNumbers.map((trayNo) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.amberGold.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: AppTheme.amberGold.withOpacity(0.5),
-                      width: 0.5,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Show collapse button at top of expanded section
+                GestureDetector(
+                  onTap: _toggleExpansion,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedRotation(
+                          turns: _isExpanded ? 0.5 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [iconColor, gradientColor],
+                              ),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.keyboard_arrow_up,
+                              size: 14,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Trays',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Text(
-                    trayNo,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
-                    ),
-                  ),
-                );
-              }).toList(),
+                ),
+                const SizedBox(height: 6),
+                // All tray numbers
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: trayNumbers.map((trayNo) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            iconColor.withOpacity(0.8),
+                            gradientColor.withOpacity(0.8),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: iconColor.withOpacity(0.2),
+                            blurRadius: 4,
+                            spreadRadius: 0,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        trayNo,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
             ),
           ),
         ),
@@ -491,58 +702,85 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     );
   }
 
-  Widget _buildSingleTrayRow(String displayText, bool canExpand) {
+  Widget _buildSingleTrayRow(String displayText, bool canExpand, Color iconColor, Color gradientColor) {
     return GestureDetector(
       onTap: canExpand ? _toggleExpansion : null,
-      child: Row(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  Icons.inventory_2,
-                  size: 13,
-                  color: AppTheme.amberGold,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Colors.white.withOpacity(0.8),
+              Colors.white.withOpacity(0.6),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.white.withOpacity(0.7),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: iconColor.withOpacity(0.15),
+              blurRadius: 4,
+              spreadRadius: 0,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [iconColor, gradientColor],
                 ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    displayText,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (canExpand) ...[
-                  const SizedBox(width: 4),
-                  AnimatedRotation(
-                    turns: _isExpanded ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 16,
-                      color: AppTheme.amberGold,
-                    ),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withOpacity(0.3),
+                    blurRadius: 4,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 1),
                   ),
                 ],
-              ],
+              ),
+              child: const Icon(
+                Icons.inventory_2,
+                size: 12,
+                color: Colors.white,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                displayText,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
-
   void _showTrayManagementDialog() {
     final controller = Get.find<PickerController>();
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return TrayManagementDialog(        // <-- This is where TrayManagementDialog is called
+        return TrayManagementDialog(
           pickerData: widget.pickerData,
           onTrayUpdated: () {
             // Refresh the picker list to show updated tray numbers
@@ -553,124 +791,147 @@ class _CompactPickerCardState extends State<CompactPickerCard>
     );
   }
 
+  Color _getBorderColor() {
+    if (widget.isSelected) {
+      final delTypeColor = _getIconColor();
+      return delTypeColor.withOpacity(0.6); // Softer border for glassmorphic effect
+    }
+    return Colors.white.withOpacity(0.8);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final iconColor = _getIconColor();
+    final gradientColor = _getGradientColor();
+
     return GestureDetector(
       onLongPress: () => _showTrayManagementDialog(),
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: _getCardGradientColors(),
           ),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: widget.isSelected
-                ? Colors.blueGrey
-                : AppTheme.shadowColor.withOpacity(0.1),
-            width: widget.isSelected ? 2 : 1,
+            color: _getBorderColor(),
+            width: widget.isSelected ? 2 : 1.5,
           ),
-          boxShadow: widget.isSelected
-              ? [
+          boxShadow: [
             BoxShadow(
-              color: Colors.blueGrey.withOpacity(0.2),
-              blurRadius: 8,
-              spreadRadius: 1,
-              offset: const Offset(0, 2),
-            ),
-          ]
-              : [
-            BoxShadow(
-              color: AppTheme.shadowColor.withOpacity(0.05),
-              blurRadius: 4,
+              color: iconColor.withOpacity(0.25),
+              blurRadius: widget.isSelected ? 15 : 10,
               spreadRadius: 0,
-              offset: const Offset(0, 1),
+              offset: const Offset(0, 5),
             ),
           ],
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(16),
           child: InkWell(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(16),
             onTap: widget.onTap,
-            splashColor: AppTheme.primaryTeal.withOpacity(0.1),
-            highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
+            splashColor: iconColor.withOpacity(0.1),
+            highlightColor: iconColor.withOpacity(0.05),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Selection indicator and Invoice Number with DelType Color
+                  // 1. Tray section at the top
+                  _buildTraySection(),
+
+                  const SizedBox(height: 12),
+
+                  // 2. Invoice Number
                   Row(
                     children: [
-                      // Selection indicator
-
-
                       Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: _getInvoiceGradientColors(),
-                              ),
-                            borderRadius: BorderRadius.circular(4),
-                            boxShadow: widget.isSelected
-                                ? [
-                              BoxShadow(
-                                color: _getBackgroundColor().withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ]
-                                : [],
+                        child: Text(
+                          widget.pickerData.invNo ?? 'N/A',
+                          style: const TextStyle(
+                            color: Colors.black87,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
                           ),
-                          child: Text(
-                            widget.pickerData.invNo ?? 'N/A',
-                            style: TextStyle(
-                              color: _getTextColor(),
-                              fontSize: widget.isSelected ? 11 : 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
                         ),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
-                  // Tray section with expand/collapse functionality
-                  _buildTraySection(),
-
-                  const SizedBox(height: 4),
-
-                  // Time
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time,
-                        size: 12,
-                        color: AppTheme.lightTeal,
+                  // 3. Time at the bottom
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [
+                          Colors.white.withOpacity(0.8),
+                          Colors.white.withOpacity(0.6),
+                        ],
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        widget.pickerData.dTime ?? 'N/A',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.onSurface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.7),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: iconColor.withOpacity(0.15),
+                          blurRadius: 4,
+                          spreadRadius: 0,
+                          offset: const Offset(0, 1),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [iconColor, gradientColor],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                            boxShadow: [
+                              BoxShadow(
+                                color: iconColor.withOpacity(0.3),
+                                blurRadius: 4,
+                                spreadRadius: 0,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.access_time,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          widget.pickerData.iTime ?? 'N/A',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black87,
+                            overflow: TextOverflow.ellipsis
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -804,16 +1065,20 @@ Widget _buildBatchList(List<String> batchNumbers, String? selectedBatch,
           ],
         ),
         const SizedBox(height: 8),
-        ...batchNumbers.map((batch) {
+        ...batchNumbers.asMap().entries.map((entry) {
+          final index = entry.key;
+          final batch = entry.value;
+          final uniqueValue = '$batch-$index'; // ← Create unique identifier
+
           return Container(
             margin: const EdgeInsets.only(bottom: 4),
             decoration: BoxDecoration(
-              color: selectedBatch == batch
+              color: selectedBatch == uniqueValue // ← Compare with unique value
                   ? AppTheme.primaryTeal.withOpacity(0.1)
                   : Colors.white,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
-                color: selectedBatch == batch
+                color: selectedBatch == uniqueValue // ← Compare with unique value
                     ? AppTheme.primaryTeal
                     : AppTheme.primaryTeal.withOpacity(0.2),
               ),
@@ -823,16 +1088,20 @@ Widget _buildBatchList(List<String> batchNumbers, String? selectedBatch,
                 batch,
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: selectedBatch == batch ? FontWeight.w600 : FontWeight.w500,
-                  color: selectedBatch == batch ? AppTheme.primaryTeal : AppTheme.onSurface,
+                  fontWeight: selectedBatch == uniqueValue // ← Compare with unique value
+                      ? FontWeight.w600
+                      : FontWeight.w500,
+                  color: selectedBatch == uniqueValue // ← Compare with unique value
+                      ? AppTheme.primaryTeal
+                      : AppTheme.onSurface,
                 ),
               ),
-              value: batch,
+              value: uniqueValue, // ← Unique value
               groupValue: selectedBatch,
               onChanged: (value) {
                 setState(() {
-                  selectedBatch = value;
-                  controller.text = value ?? '';
+                  selectedBatch = value; // This now stores "batch-index"
+                  controller.text = batch; // Still use original batch name
                 });
               },
               dense: true,
@@ -911,7 +1180,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                 widget.detail.pNote = '';
               });
             }
-            widget.onSelectionChanged(widget.detail.itemDetailId.toString(), !widget.isSelected);
+            widget.onSelectionChanged("${widget.detail.itemDetailId.toString()}${widget.index}", !widget.isSelected);
           },
           splashColor: AppTheme.primaryTeal.withOpacity(0.1),
           highlightColor: AppTheme.primaryTeal.withOpacity(0.05),
@@ -1028,6 +1297,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         ],
                       ),
                     ),
+
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1046,7 +1316,60 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
 
+                // Manufacture and Batch details
+                if(widget.detail.ccp == 1)
+                  Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.amberGold,
+                          AppTheme.amberGold.withOpacity(0.8),
+                          AppTheme.amberGold,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.amberGold.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Row(
+                        children: [
+                          // Icon on the left
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Icon(
+                              Icons.comment_outlined,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+
+                          // Marquee text
+                          Expanded(
+                            child: _MarqueeText(
+                              text: 'Picked with coolant.',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 8),
 
                 // Manufacture and Batch details
@@ -1056,17 +1379,20 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       child: _buildCompactInfo(
                         widget.detail.dNick ?? 'N/A',
                         Icons.factory,
-                        AppTheme.lightTeal,
+                          AppTheme.primaryTeal,
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: _buildCompactInfo(
-                        widget.detail.batchNo ?? 'N/A',
-                        Icons.batch_prediction,
-                        AppTheme.lavender,
-                      ),
-                    ),
+          Expanded(
+            child: _buildCompactInfo(
+              widget.detail.batchNo ?? 'N/A',
+              Icons.batch_prediction,
+              (widget.detail.bCount ?? 0) > 1
+                  ? Colors.pinkAccent // when bCount > 1
+                  : AppTheme.primaryTeal,     // default color
+            ),
+          ),
+
                   ],
                 ),
 
@@ -1078,7 +1404,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       child: _buildCompactInfo(
                         widget.detail.sExpDate ?? 'N/A',
                         Icons.schedule,
-                        AppTheme.amberGold,
+                          AppTheme.primaryTeal,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1086,7 +1412,9 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       child: _buildCompactInfo(
                         widget.detail.mrp != null ? '₹${widget.detail.mrp!.toStringAsFixed(2)}' : 'N/A',
                         Icons.currency_rupee,
-                        AppTheme.accentGreen,
+                        (widget.detail.mCount ?? 0) > 1
+                            ? Colors.pinkAccent // when bCount > 1
+                            : AppTheme.primaryTeal,
                       ),
                     ),
                   ],
@@ -1109,7 +1437,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       child: _buildCompactInfo(
                         'L: ${widget.detail.caseL?.toString().replaceAll('.0', '') ?? '0'}',
                         Icons.inventory_2,
-                        AppTheme.lightTeal,
+                          AppTheme.primaryTeal,
                       ),
                     ),
                   ],
@@ -1248,7 +1576,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Item Review',
+                                  'Product Review',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,
@@ -1285,8 +1613,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       ),
                     ),
 
-                    // Content
-                    Flexible(
+                    // Scrollable Content
+                    Expanded(
                       child: SingleChildScrollView(
                         padding: const EdgeInsets.all(20),
                         child: Column(
@@ -1321,34 +1649,6 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(8),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.primaryTeal.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Icon(
-                                          Icons.inventory_2,
-                                          color: AppTheme.primaryTeal,
-                                          size: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          'Item Information',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w700,
-                                            color: AppTheme.onSurface,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
                                   Text(
                                     '${widget.detail.itemName ?? 'Unknown Item'} ${widget.detail.packing ?? ''}',
                                     style: const TextStyle(
@@ -1586,47 +1886,74 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                 ],
                               ),
                             ),
-
-                            // Review Text Field
-                            if (showReviewField) ...[
-                              const SizedBox(height: 20),
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surface,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppTheme.primaryTeal.withOpacity(0.3),
-                                  ),
-                                ),
-                                child: TextField(
-                                  controller: reviewController,
-                                  decoration: InputDecoration(
-                                    hintText: reviewHint,
-                                    hintStyle: TextStyle(
-                                      color: AppTheme.onSurface.withOpacity(0.6),
-                                      fontSize: 14,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide.none,
-                                    ),
-                                    filled: true,
-                                    fillColor: AppTheme.primaryTeal.withOpacity(0.05),
-                                    contentPadding: const EdgeInsets.all(16),
-                                    prefixIcon: Icon(
-                                      Icons.edit_note,
-                                      color: AppTheme.primaryTeal,
-                                    ),
-                                  ),
-                                  maxLines: selectedReason == 'multiple' ? 3 : 1,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
                     ),
+
+                    // Fixed Review Text Field - Always visible at bottom when shown
+                    if (showReviewField)
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.only(
+                            bottomLeft: Radius.circular(20),
+                            bottomRight: Radius.circular(20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, -2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Divider
+                            Container(
+                              height: 1,
+                              width: double.infinity,
+                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                            ),
+                            const SizedBox(height: 20),
+                            // Review Text Field
+                            Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppTheme.primaryTeal.withOpacity(0.3),
+                                ),
+                              ),
+                              child: TextField(
+                                controller: reviewController,
+                                decoration: InputDecoration(
+                                  hintText: reviewHint,
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.onSurface.withOpacity(0.6),
+                                    fontSize: 14,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  filled: true,
+                                  fillColor: AppTheme.primaryTeal.withOpacity(0.05),
+                                  contentPadding: const EdgeInsets.all(16),
+                                  prefixIcon: Icon(
+                                    Icons.edit_note,
+                                    color: AppTheme.primaryTeal,
+                                  ),
+                                ),
+                                maxLines: selectedReason == 'multiple' ? 3 : 1,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     // Action Buttons (keep existing)
                     Container(
@@ -1706,7 +2033,6 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
       },
     );
   }
-
 
   Widget _buildRadioOption(
       String title,
@@ -1860,7 +2186,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
   }
 
   Widget _buildBatchList(List<String> batchNumbers, String? selectedBatch,
-      Function setState, TextEditingController controller,Function(String?) onBatchSelected) {
+      Function setState, TextEditingController controller, Function(String?) onBatchSelected) {
     if (batchNumbers.isEmpty) {
       return Container(
         margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
@@ -1914,16 +2240,20 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
             ],
           ),
           const SizedBox(height: 8),
-          ...batchNumbers.map((batch) {
+          ...batchNumbers.asMap().entries.map((entry) {
+            final index = entry.key;
+            final batch = entry.value;
+            final uniqueValue = '$batch-$index';
+
             return Container(
               margin: const EdgeInsets.only(bottom: 4),
               decoration: BoxDecoration(
-                color: selectedBatch == batch
+                color: selectedBatch == uniqueValue
                     ? AppTheme.primaryTeal.withOpacity(0.1)
                     : Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: selectedBatch == batch
+                  color: selectedBatch == uniqueValue
                       ? AppTheme.primaryTeal
                       : AppTheme.primaryTeal.withOpacity(0.2),
                 ),
@@ -1933,19 +2263,16 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                   batch,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: selectedBatch == batch ? FontWeight.w600 : FontWeight.w500,
-                    color: selectedBatch == batch ? AppTheme.primaryTeal : AppTheme.onSurface,
+                    fontWeight: selectedBatch == uniqueValue ? FontWeight.w600 : FontWeight.w500,
+                    color: selectedBatch == uniqueValue ? AppTheme.primaryTeal : AppTheme.onSurface,
                   ),
                 ),
-                value: batch,
+                value: uniqueValue,
                 groupValue: selectedBatch,
                 onChanged: (value) {
-                  setState(() {
-                    onBatchSelected(value);
-
-                    selectedBatch = value;
-                    controller.text = value ?? '';
-                  });
+                  // ✅ Call onBatchSelected with the unique value
+                  onBatchSelected(value);
+                  controller.text = batch;
                 },
                 dense: true,
                 activeColor: AppTheme.primaryTeal,
@@ -2012,7 +2339,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
     });
 
     // Auto-select the item after submitting review
-    widget.onSelectionChanged(widget.detail.itemDetailId.toString(), true);
+    // widget.onSelectionChanged(widget.detail.itemDetailId.toString(), true);
 
     // Call the callback if provided
     widget.onRemarkSubmitted?.call(widget.detail);
@@ -2747,3 +3074,114 @@ class FloatingSubmitButton extends StatelessWidget {
   }
 }
 
+
+class _MarqueeText extends StatefulWidget {
+  final String text;
+  final TextStyle style;
+  final double speed; // pixels per second
+
+  const _MarqueeText({
+    required this.text,
+    required this.style,
+    this.speed = 30.0,
+  });
+
+  @override
+  State<_MarqueeText> createState() => _MarqueeTextState();
+}
+
+class _MarqueeTextState extends State<_MarqueeText>
+    with SingleTickerProviderStateMixin {
+  late ScrollController _scrollController;
+  late AnimationController _animationController;
+  double _textWidth = 0;
+  double _containerWidth = 0;
+  bool _shouldScroll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfScrollNeeded();
+    });
+  }
+
+  void _checkIfScrollNeeded() {
+    final textPainter = TextPainter(
+      text: TextSpan(text: widget.text, style: widget.style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    _textWidth = textPainter.width;
+    _containerWidth = context.size?.width ?? 0;
+
+    if (_textWidth > _containerWidth) {
+      setState(() {
+        _shouldScroll = true;
+      });
+      _startScrolling();
+    }
+  }
+
+  void _startScrolling() {
+    if (!_shouldScroll) return;
+
+    final duration = Duration(
+      milliseconds: ((_textWidth + _containerWidth) / widget.speed * 1000).round(),
+    );
+
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        _scrollController
+            .animateTo(
+          _textWidth + _containerWidth,
+          duration: duration,
+          curve: Curves.linear,
+        )
+            .then((_) {
+          if (mounted) {
+            _scrollController.jumpTo(0);
+            _startScrolling();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shouldScroll) {
+      return Text(
+        widget.text,
+        style: widget.style,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      controller: _scrollController,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Row(
+        children: [
+          Text(widget.text, style: widget.style),
+          SizedBox(width: _containerWidth),
+          Text(widget.text, style: widget.style),
+        ],
+      ),
+    );
+  }
+}

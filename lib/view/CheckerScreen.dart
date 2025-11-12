@@ -144,6 +144,7 @@ class CheckerScreen extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller.searchController,
+              keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 hintText: 'Search by Invoice, Tray No, or Type...',
                 hintStyle: TextStyle(
@@ -311,27 +312,60 @@ class CheckerScreen extends StatelessWidget {
   }
 
   Widget _buildPackerGrid(CheckerController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: GridView.builder(
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          childAspectRatio: 0.9,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-        ),
-        itemCount: controller.filteredPackerList.length,
-        itemBuilder: (context, index) {
-          final packerData = controller.filteredPackerList[index];
-          return EnhancedPackerItemCard(
-            packerData: packerData,
-            index: index,
-            onTap: () => controller.onPackerItemTap(packerData),
-          );
-        },
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        print("check widthh ------> $screenWidth");
+
+        final isTablet = screenWidth >= 600;
+
+        // Calculate columns based on screen size
+        final crossAxisCount = isTablet
+            ? (screenWidth >= 900 ? 4 : 3)  // 4 columns for large tablets, 3 for small tablets
+            : 2;  // 2 columns for mobile
+
+        // Dynamic spacing
+        final spacing = isTablet ? 12.0 : 10.0;
+
+        // ⭐ KEY SOLUTION: Fixed height for cards
+        // Adjust this value based on your EnhancedPackerItemCard content
+        final cardHeight = isTablet ? 200.0 : 200.0;
+
+        // Calculate available width per card
+        final horizontalPadding = 32.0; // 16 * 2
+        final totalSpacing = spacing * (crossAxisCount - 1);
+        final availableWidth = screenWidth - horizontalPadding - totalSpacing;
+        final cardWidth = availableWidth / crossAxisCount;
+
+        // Calculate aspect ratio dynamically based on actual dimensions
+        final childAspectRatio = cardWidth / cardHeight;
+
+        print("Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: spacing,
+              mainAxisSpacing: spacing,
+            ),
+            itemCount: controller.filteredPackerList.length,
+            itemBuilder: (context, index) {
+              final packerData = controller.filteredPackerList[index];
+              return EnhancedPackerItemCard(
+                packerData: packerData,
+                index: index,
+                onTap: () => controller.onPackerItemTap(packerData),
+              );
+            },
+          ),
+        );
+      },
     );
   }
+
 }
 
 class EnhancedPackerItemCard extends StatelessWidget {
@@ -346,47 +380,77 @@ class EnhancedPackerItemCard extends StatelessWidget {
     required this.onTap,
   }) : super(key: key);
 
-  // Delivery type color configuration
+  // Enhanced delivery type color configuration with better visibility
   Map<String, Map<String, dynamic>> get deliveryTypeConfig => {
     'URGENT': {
-      'backgroundColor': const Color(0xFFF50E0E), // #F50E0E - red
+      'backgroundColor': const Color(0xFFFF6B6B), // Coral Red - more visible
       'textColor': Colors.white,
-      'gradientColors': [const Color(0xFFF50E0E), const Color(0xFFFF4444)],
+      'gradientColors': [const Color(0xFFFF6B6B), const Color(0xFFFF8E8E)],
+      'cardGradientColors': [
+        const Color(0xFFFF6B6B).withOpacity(0.03),
+        const Color(0xFFFF6B6B).withOpacity(0.08),
+        const Color(0xFFFF6B6B).withOpacity(0.12),
+      ],
       'icon': Icons.priority_high,
       'label': 'URGENT',
     },
     'PICK-UP': {
-      'backgroundColor': const Color(0xFF15EE81), // #15EE81 - green
-      'textColor': Colors.black,
-      'gradientColors': [const Color(0xFF15EE81), const Color(0xFF4CAF50)],
+      'backgroundColor': const Color(0xFF4ECDC4), // Turquoise Green - fresh
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF4ECDC4), const Color(0xFF6DD5D0)],
+      'cardGradientColors': [
+        const Color(0xFF4ECDC4).withOpacity(0.03),
+        const Color(0xFF4ECDC4).withOpacity(0.08),
+        const Color(0xFF4ECDC4).withOpacity(0.12),
+      ],
       'icon': Icons.local_shipping,
       'label': 'PICKUP',
     },
     'DELIVERY': {
-      'backgroundColor': const Color(0xFFFFB266), // #FFB266 - orange
+      'backgroundColor': const Color(0xFFFFBE0B), // Vibrant Amber
       'textColor': Colors.black,
-      'gradientColors': [const Color(0xFFFFB266), const Color(0xFFFFCC80)],
+      'gradientColors': [const Color(0xFFFFBE0B), const Color(0xFFFFC83D)],
+      'cardGradientColors': [
+        const Color(0xFFFFBE0B).withOpacity(0.03),
+        const Color(0xFFFFBE0B).withOpacity(0.08),
+        const Color(0xFFFFBE0B).withOpacity(0.12),
+      ],
       'icon': Icons.delivery_dining,
       'label': 'DELIVERY',
     },
     'MEDREP': {
-      'backgroundColor': const Color(0xFFEAF207), // #EAF207 - yellow
-      'textColor': Colors.black,
-      'gradientColors': [const Color(0xFFEAF207), const Color(0xFFF9FD71)],
+      'backgroundColor': const Color(0xFFFB8500), // Burnt Orange
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFFFB8500), const Color(0xFFFC9A33)],
+      'cardGradientColors': [
+        const Color(0xFFFB8500).withOpacity(0.03),
+        const Color(0xFFFB8500).withOpacity(0.08),
+        const Color(0xFFFB8500).withOpacity(0.12),
+      ],
       'icon': Icons.medical_services,
       'label': 'MEDREP',
     },
     'COD': {
-      'backgroundColor': const Color(0xFFFF99FF), // #FF99FF - pink
-      'textColor': Colors.black,
-      'gradientColors': [const Color(0xFFFF99FF), const Color(0xFFFFC1FF)],
+      'backgroundColor': const Color(0xFF8367C7), // Lavender Purple
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF8367C7), const Color(0xFF9B7ED1)],
+      'cardGradientColors': [
+        const Color(0xFF8367C7).withOpacity(0.03),
+        const Color(0xFF8367C7).withOpacity(0.08),
+        const Color(0xFF8367C7).withOpacity(0.12),
+      ],
       'icon': Icons.payments,
       'label': 'COD',
     },
     'OUTSTATION': {
-      'backgroundColor': const Color(0xFF99FFFF), // #99FFFF - sky blue
-      'textColor': Colors.black,
-      'gradientColors': [const Color(0xFF99FFFF), const Color(0xFFB3E5FC)],
+      'backgroundColor': const Color(0xFF219EBC), // Ocean Blue
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF219EBC), const Color(0xFF4AADC7)],
+      'cardGradientColors': [
+        const Color(0xFF219EBC).withOpacity(0.03),
+        const Color(0xFF219EBC).withOpacity(0.08),
+        const Color(0xFF219EBC).withOpacity(0.12),
+      ],
       'icon': Icons.flight_takeoff,
       'label': 'OUTSTATION',
     },
@@ -395,9 +459,14 @@ class EnhancedPackerItemCard extends StatelessWidget {
   Map<String, dynamic> getDeliveryTypeStyle(String? delType) {
     final type = delType?.toUpperCase() ?? '';
     return deliveryTypeConfig[type] ?? {
-      'backgroundColor': AppTheme.surface,
-      'textColor': AppTheme.onSurface,
-      'gradientColors': [AppTheme.surface, AppTheme.surfaceVariant],
+      'backgroundColor': const Color(0xFF457B9D), // Steel Blue default
+      'textColor': Colors.white,
+      'gradientColors': [const Color(0xFF457B9D), const Color(0xFF5A8BA8)],
+      'cardGradientColors': [
+        const Color(0xFF457B9D).withOpacity(0.03),
+        const Color(0xFF457B9D).withOpacity(0.08),
+        const Color(0xFF457B9D).withOpacity(0.12),
+      ],
       'icon': Icons.local_shipping,
       'label': 'STANDARD',
     };
@@ -406,30 +475,43 @@ class EnhancedPackerItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final deliveryStyle = getDeliveryTypeStyle(packerData.delType);
+    final Color themeColor = deliveryStyle['backgroundColor'] as Color;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: deliveryStyle['cardGradientColors'],
+        ),
+        borderRadius: BorderRadius.circular(17),
         border: Border.all(
-          color: (deliveryStyle['backgroundColor'] as Color).withOpacity(0.2),
+          color: themeColor.withOpacity(0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: (deliveryStyle['backgroundColor'] as Color).withOpacity(0.15),
+            color: themeColor.withOpacity(0.2),
             blurRadius: 12,
-            spreadRadius: 0,
+            spreadRadius: 1,
             offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: AppTheme.shadowColor.withOpacity(0.05),
+            blurRadius: 6,
+            spreadRadius: 0,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
-        color: Colors.transparent,
+        color: Color.lerp(themeColor, Colors.white, 0.85)!,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
+          splashColor: themeColor.withOpacity(0.1),
+          highlightColor: themeColor.withOpacity(0.05),
           child: Column(
             children: [
               // Header with delivery type
@@ -448,18 +530,25 @@ class EnhancedPackerItemCard extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      deliveryStyle['icon'],
-                      color: deliveryStyle['textColor'],
-                      size: 16,
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Icon(
+                        deliveryStyle['icon'],
+                        color: deliveryStyle['textColor'],
+                        size: 16,
+                      ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         deliveryStyle['label'],
                         style: TextStyle(
                           color: deliveryStyle['textColor'],
-                          fontSize: 12,
+                          fontSize: 13,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
@@ -494,13 +583,24 @@ class EnhancedPackerItemCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  themeColor.withOpacity(0.1),
+                                  themeColor.withOpacity(0.15),
+                                ],
+                              ),
                               borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: themeColor.withOpacity(0.3),
+                                width: 0.5,
+                              ),
                             ),
                             child: Text(
                               'INV',
                               style: TextStyle(
-                                color: AppTheme.primaryTeal,
+                                color: themeColor,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.5,
@@ -512,7 +612,7 @@ class EnhancedPackerItemCard extends StatelessWidget {
                             child: Text(
                               packerData.invNo ?? 'N/A',
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: FontWeight.w700,
                                 color: AppTheme.onSurface,
                               ),
@@ -530,7 +630,7 @@ class EnhancedPackerItemCard extends StatelessWidget {
                         Icons.inventory_2_outlined,
                         'Tray',
                         packerData.trayNo ?? 'N/A',
-                        AppTheme.coralPink,
+                        themeColor,
                       ),
 
                       const SizedBox(height: 8),
@@ -539,11 +639,9 @@ class EnhancedPackerItemCard extends StatelessWidget {
                       _buildInfoRow(
                         Icons.schedule_outlined,
                         'Time',
-                        _formatTime(packerData.dTime),
-                        AppTheme.primaryTeal,
+                        _formatTime(packerData.iTime),
+                        themeColor,
                       ),
-
-
                     ],
                   ),
                 ),
@@ -561,12 +659,16 @@ class EnhancedPackerItemCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withOpacity(0.08),
             borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: color.withOpacity(0.2),
+              width: 0.5,
+            ),
           ),
           child: Icon(
             icon,
-            size: 14,
+            size: 13,
             color: color,
           ),
         ),
@@ -587,7 +689,7 @@ class EnhancedPackerItemCard extends StatelessWidget {
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   color: AppTheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),

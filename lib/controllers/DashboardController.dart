@@ -18,6 +18,8 @@ class DashboardController extends GetxController {
   // Observable variables
   final isLoading = false.obs;
   final selectedDate = DateTime.now().obs;
+  final searchController = TextEditingController();
+
   final searchText = ''.obs;
   final selectedCategory = 'InvNo'.obs;
   final isDetailViewVisible = false.obs;
@@ -45,7 +47,7 @@ class DashboardController extends GetxController {
   final companyId = 1.obs;
   final branchId = 1.obs;
   final isPickManager = true.obs;
-  final workingWithPickupManager = true.obs;
+  late var workingWithPickupManager = true.obs;
 
   // Computed properties for pagination
   int get totalPages => (filteredStateList.length / itemsPerPage.value).ceil();
@@ -74,7 +76,16 @@ class DashboardController extends GetxController {
     });
   }
 
-  void loadInitialData() {
+
+
+
+  Future<void> loadInitialData() async {
+    final workingWithPickupManagerbool = await ApiConfig.getSyn('WorkingWithPickupManager');
+    if (workingWithPickupManagerbool != 0) {
+     workingWithPickupManager = true.obs;
+    }else{
+      workingWithPickupManager = false.obs;
+    }
     currentPage.value = 1; // Reset to first page
     getDbCount();
     getDbState();
@@ -139,6 +150,7 @@ class DashboardController extends GetxController {
       isLoading.value = false;
     }
   }
+
 
   Future<void> getDbState() async {
     try {
@@ -474,6 +486,8 @@ class DashboardController extends GetxController {
 
   @override
   void onClose() {
+    searchController.dispose();
+
     _debounceTimer?.cancel();
     super.onClose();
   }

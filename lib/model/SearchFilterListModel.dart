@@ -37,6 +37,7 @@ class SearchData {
   String? city;
   int? grpIdDel;
   String? deliveryRoute;
+  int? Pending;
 
   SearchData({
     this.ledIdSalesmen,
@@ -47,6 +48,7 @@ class SearchData {
     this.city,
     this.grpIdDel,
     this.deliveryRoute,
+    this.Pending
   });
 
   factory SearchData.fromJson(Map<String, dynamic> json) {
@@ -59,6 +61,7 @@ class SearchData {
       city: json['City'] as String?,
       grpIdDel: json['GrpId_Del'] as int?,
       deliveryRoute: json['DeliveryRoute'] as String?,
+      Pending: json['Pending'] as int?
     );
   }
 
@@ -72,6 +75,7 @@ class SearchData {
       'City': city,
       'GrpId_Del': grpIdDel,
       'DeliveryRoute': deliveryRoute,
+      'Pending':Pending
     };
   }
 }

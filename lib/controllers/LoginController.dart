@@ -210,6 +210,11 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
             await prefs.remove('password');
           }
 
+          print("login responssee   ${loginResponse.toJson()}");
+
+          await saveSession();
+
+
           Get.snackbar(
             'Success',
             'Login successful!',
@@ -218,9 +223,11 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
             snackPosition: SnackPosition.TOP,
           );
 
+
+
           // Show selection bottomsheet instead of navigating directly
           await Future.delayed(const Duration(milliseconds: 500));
-          _showSelectionBottomSheet();
+          showSelectionBottomSheet();
         } else {
           Get.snackbar(
             'Error',
@@ -258,6 +265,56 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
       );
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> saveSession() async {
+    try {
+      String imei = await getDeviceImei();
+      final apiConfig = await ApiConfig.load();
+      final loginData = await ApiConfig.getLoginData();
+
+      if (loginData == null) {
+        print("Login data not found");
+        return;
+      }
+
+      final now = DateTime.now();
+      final sessionId = '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+
+
+      final response = await http
+          .post(
+        Uri.parse('${apiConfig.baseUrl}save_session'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'sessionId': sessionId,
+          'imei': imei,
+          'mobilenum':'', // Adjust based on your LoginModel
+          'empid': loginData.response?.empId ?? 0,
+          'companyid': loginData.response?.coId ?? 0,
+          'brchid': loginData.response?.brchId ?? 0,
+          'locationid':'',
+        }),
+      )
+          .timeout(const Duration(seconds: 10), onTimeout: () {
+        throw TimeoutException("Request timed out after 10 seconds");
+      });
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        print("Save session response: $responseData");
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('session_id', sessionId);
+        print("SessionId saved: $sessionId");
+      } else {
+        print("Save session failed with status: ${response.statusCode}");
+      }
+    } on TimeoutException {
+      print("Save session request timed out");
+    } catch (e) {
+      print("Save session error: $e");
     }
   }
 
@@ -384,9 +441,11 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
 
   // Selection Methods
   void selectCompany(CompanyData company) {
+    print("u");
     selectedCompany.value = company;
     selectedCompanyId = company.companyid;
     getBranchList(company.companyid!);
+    getFloorList(selectedCompanyId!, 0);
   }
 
   void selectBranch(BranchData branch) {
@@ -401,7 +460,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
   }
 
   // Show Selection Bottom Sheet
-  void _showSelectionBottomSheet() {
+  void showSelectionBottomSheet() {  // Removed underscore
     getCompanyList();
     Get.bottomSheet(
       CompanySelectionBottomSheet(),
@@ -410,7 +469,6 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
       enableDrag: false,
     );
   }
-
   // Proceed to Main Screen
   void proceedToMainScreen() {
     // if (selectedCompanyId != null && selectedBranchId != null && selectedFloorId != null) {
@@ -467,6 +525,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
         if (serverConnect.settingData != null) {
           await ApiConfig.setAppSettings(serverConnect.settingData!);
         }
+        print("server valuess ${serverConnect.toJson()}");
         Get.snackbar(
           'Success',
           'Connected to server successfully!',

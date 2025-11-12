@@ -4,11 +4,29 @@ import 'package:get/get_core/src/get_main.dart';
 import 'package:onepicker/controllers/LoginController.dart';
 import 'package:onepicker/theme/AppTheme.dart';
 import 'dart:math' as math;
+import 'package:flutter/services.dart';
 
 import 'package:onepicker/view/Login.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark, // Change based on your theme
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
+  // Then set the enabled system UI mode
+  Future.delayed(Duration.zero, () {
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,
+      overlays: [SystemUiOverlay.top],
+    );
+  });
+
   Get.put((LoginController()));
 
   runApp(const MyApp());

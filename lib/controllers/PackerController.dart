@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:get/get_state_manager/src/simple/get_controllers.dart';
 import 'package:http/http.dart' as http;
@@ -209,8 +210,12 @@ class PackerController extends GetxController {
                   ),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 ),
-                keyboardType: TextInputType.text,
-              ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly, // ✅ allows only 0–9 digits
+                ],
+              )
+              ,
 
               const SizedBox(height: 16),
 

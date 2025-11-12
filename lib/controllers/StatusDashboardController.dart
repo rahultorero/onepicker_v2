@@ -24,6 +24,8 @@ class StatusDashboardController extends GetxController with GetTickerProviderSta
   final RxInt totalDeliveryPending = 0.obs;
   final RxBool hasData = false.obs;
   final RxString errorMessage = ''.obs;
+  RxBool showPickerManager = false.obs;
+
 
   // Animation controllers
   late AnimationController barChartAnimationController;
@@ -39,7 +41,6 @@ class StatusDashboardController extends GetxController with GetTickerProviderSta
 
   // Constants
   final dateFormat = DateFormat('yyyy-MM-dd');
-  final String baseUrl = "https://your-api-domain.com/api"; // Replace with your actual API base URL
 
   // User credentials - Get these from SharedPreferences or secure storage
   String get selectedCompanyID => "1"; // Replace with actual company ID
@@ -48,9 +49,38 @@ class StatusDashboardController extends GetxController with GetTickerProviderSta
   @override
   void onInit() {
     super.onInit();
+    loadData();
+
     _initializeAnimations();
     _setDefaultDates();
     fetchDashboardData();
+  }
+
+  Future<void> loadData() async {
+    // Get original data
+
+    // Check condition
+    final workingWithPickupManagerbool = await ApiConfig.getSyn('WorkingWithPickupManager');
+    showPickerManager.value = workingWithPickupManagerbool != 0;
+
+  }
+
+  // In StatusDashboardController
+  List<DataItem> getFilteredDataItems() {
+
+
+    if (showPickerManager.value) {
+      return DataItemList;
+    }
+
+    final filtered = DataItemList.where((item) {
+      final status = item.status?.toLowerCase() ?? '';
+      final shouldRemove = status.contains('picker manager');
+      // print('🔍 Status: $status, Contains picker manager: $shouldRemove');
+      return !shouldRemove;
+    }).toList();
+
+    return filtered;
   }
 
   void _initializeAnimations() {
@@ -105,7 +135,7 @@ class StatusDashboardController extends GetxController with GetTickerProviderSta
 
   void _setDefaultDates() {
     final now = DateTime.now();
-    fromDate.value = dateFormat.format(now.subtract(const Duration(days: 30)));
+    fromDate.value = dateFormat.format(now);
     toDate.value = dateFormat.format(now);
   }
 
@@ -171,7 +201,6 @@ class StatusDashboardController extends GetxController with GetTickerProviderSta
         'BrchId': LoginController.selectedBranchId.toString(),
       };
 
-      print('API Request - URL: $baseUrl/status');
       print('API Request - Body: $requestBody');
 
       final apiConfig = await ApiConfig.load();
@@ -212,14 +241,6 @@ class StatusDashboardController extends GetxController with GetTickerProviderSta
             listAnimationController.forward();
           }
 
-          Get.snackbar(
-            'Success',
-            'Dashboard data updated successfully',
-            backgroundColor: Colors.green.withOpacity(0.8),
-            colorText: Colors.white,
-            snackPosition: SnackPosition.TOP,
-            duration: const Duration(seconds: 2),
-          );
 
         } else {
           throw Exception(apiResponse.message!.isNotEmpty
