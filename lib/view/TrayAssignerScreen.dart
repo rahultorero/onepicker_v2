@@ -507,6 +507,7 @@ class TrayAssignerScreen extends StatelessWidget {
     final deliveryType = item.delType ?? '';
     final cardColors = _getDeliveryTypeColors(deliveryType);
     final itemId = item.sIId ?? 0;
+    final isOnHold = item.hold ?? false; // Add this line to check hold status
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -531,551 +532,610 @@ class TrayAssignerScreen extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        children: [
-          // Enhanced Header with subtle gradient
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.surfaceVariant.withOpacity(0.3),
-                  AppTheme.background,
+      child: Opacity(
+        opacity: isOnHold ? 0.6 : 1.0, // Reduce opacity when on hold
+        child: Column(
+          children: [
+            // Enhanced Header with subtle gradient
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isOnHold
+                      ? [
+                    AppTheme.onSurfaceVariant.withOpacity(0.3),
+                    AppTheme.onSurfaceVariant.withOpacity(0.1),
+                  ]
+                      : [
+                    AppTheme.surfaceVariant.withOpacity(0.3),
+                    AppTheme.background,
+                  ],
+                ),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+                border: Border(
+                  left: BorderSide(
+                    color: isOnHold ? AppTheme.onSurfaceVariant : cardColors['primary']!,
+                    width: 4,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Refined index badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: cardColors['primary']!.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: cardColors['primary']!.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      '#${(index + 1).toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: cardColors['primary'],
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Enhanced delivery type badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: cardColors['primary'],
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: cardColors['primary']!.withOpacity(0.25),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      deliveryType,
+                      style: TextStyle(
+                        color: cardColors['primaryText'],
+                        fontWeight: FontWeight.w600,
+                        fontSize: 10,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ),
+                  // Add ON HOLD badge
+                  if (isOnHold) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppTheme.warning,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.warning.withOpacity(0.25),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.pause_circle_rounded,
+                            size: 10,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          const Text(
+                            'ON HOLD',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  // Elegant invoice container
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppTheme.onSurfaceVariant.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          item.invNo ?? '',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.onSurface,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        Text(
+                          ApiConfig.dateConvert(item.invDate) ?? '',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.onSurface.withOpacity(0.7),
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-              border: Border(
-                left: BorderSide(
-                  color: cardColors['primary']!,
-                  width: 4,
-                ),
-              ),
             ),
-            child: Row(
-              children: [
-                // Refined index badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: cardColors['primary']!.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: cardColors['primary']!.withOpacity(0.2),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    '#${(index + 1).toString().padLeft(2, '0')}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: cardColors['primary'],
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Enhanced delivery type badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: cardColors['primary'],
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: cardColors['primary']!.withOpacity(0.25),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Text(
-                    deliveryType,
-                    style: TextStyle(
-                      color: cardColors['primaryText'],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 10,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                // Elegant invoice container
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: AppTheme.onSurfaceVariant.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        item.invNo ?? '',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.onSurface,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      Text(
-                        ApiConfig.dateConvert(item.invDate) ?? '',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppTheme.onSurface.withOpacity(0.7),
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Refined Content Section
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Enhanced Party Info Row
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryTeal.withOpacity(0.03),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.primaryTeal.withOpacity(0.08),
-                      width: 1,
+            // Refined Content Section
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Enhanced Party Info Row
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryTeal.withOpacity(0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.primaryTeal.withOpacity(0.08),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Refined business icon
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryTeal.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.business_rounded,
+                            size: 14,
+                            color: AppTheme.primaryTeal,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item.party ?? '',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.onSurface,
+                              letterSpacing: -0.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Enhanced QR scanner button - DISABLED when on hold
+                        GestureDetector(
+                          onTap: isOnHold ? null : () => controller.openQRScannerForItem(item),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: isOnHold
+                                    ? [
+                                  AppTheme.onSurfaceVariant.withOpacity(0.3),
+                                  AppTheme.onSurfaceVariant.withOpacity(0.3),
+                                ]
+                                    : [
+                                  AppTheme.warmAccent,
+                                  AppTheme.warmAccent.withOpacity(0.8),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: isOnHold
+                                  ? []
+                                  : [
+                                BoxShadow(
+                                  color: AppTheme.warmAccent.withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.qr_code_scanner_rounded,
+                              size: 16,
+                              color: isOnHold ? AppTheme.onSurfaceVariant : Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(
+
+                  const SizedBox(height: 12),
+
+                  // Refined Details Grid
+                  Row(
                     children: [
-                      // Refined business icon
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryTeal.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.business_rounded,
-                          size: 14,
-                          color: AppTheme.primaryTeal,
+                      Expanded(
+                        child: _buildRefinedDetailItem(
+                          Icons.location_on_rounded,
+                          'Location',
+                          '${item.area ?? ''} ${item.city ?? ''}',
+                          AppTheme.coralPink,
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(
-                          item.party ?? '',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.onSurface,
-                            letterSpacing: -0.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      // Enhanced QR scanner button
-                      GestureDetector(
-                        onTap: () => controller.openQRScannerForItem(item),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                AppTheme.warmAccent,
-                                AppTheme.warmAccent.withOpacity(0.8),
-                              ],
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.warmAccent.withOpacity(0.3),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.qr_code_scanner_rounded,
-                            size: 16,
-                            color: Colors.white,
-                          ),
+                        child: _buildRefinedDetailItem(
+                          Icons.person_rounded,
+                          'Sales Rep',
+                          item.sman ?? '',
+                          AppTheme.sage,
                         ),
                       ),
                     ],
                   ),
-                ),
 
-                const SizedBox(height: 12),
+                  const SizedBox(height: 12),
 
-                // Refined Details Grid
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildRefinedDetailItem(
-                        Icons.location_on_rounded,
-                        'Location',
-                        '${item.area ?? ''} ${item.city ?? ''}',
-                        AppTheme.coralPink,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: _buildRefinedDetailItem(
-                        Icons.person_rounded,
-                        'Sales Rep',
-                        item.sman ?? '',
-                        AppTheme.sage,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Refined Error Message
-                GetBuilder<TrayAssignerController>(
-                  id: 'error_$itemId',
-                  builder: (controller) {
-                    final errorMessage = controller.getErrorMessage(itemId);
-                    return errorMessage.isNotEmpty
-                        ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.error.withOpacity(0.08),
-                            AppTheme.error.withOpacity(0.04),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: AppTheme.error.withOpacity(0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.error_outline_rounded,
-                            color: AppTheme.error,
-                            size: 16,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              errorMessage,
-                              style: const TextStyle(
-                                color: AppTheme.error,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                        : const SizedBox.shrink();
-                  },
-                ),
-
-                // Refined Tray Numbers
-                GetBuilder<TrayAssignerController>(
-                  id: 'trays_$itemId',
-                  builder: (controller) {
-                    final trayNumbers = controller.getTrayNumbers(itemId);
-                    return trayNumbers.isNotEmpty
-                        ? Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            cardColors['primary']!.withOpacity(0.06),
-                            cardColors['primary']!.withOpacity(0.02),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: cardColors['primary']!.withOpacity(0.15),
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: cardColors['primary']!.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Icon(
-                                  Icons.inventory_2_rounded,
-                                  size: 12,
-                                  color: cardColors['primary'],
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Tray Numbers',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: cardColors['primary'],
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
+                  // Refined Error Message
+                  GetBuilder<TrayAssignerController>(
+                    id: 'error_$itemId',
+                    builder: (controller) {
+                      final errorMessage = controller.getErrorMessage(itemId);
+                      return errorMessage.isNotEmpty
+                          ? Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.error.withOpacity(0.08),
+                              AppTheme.error.withOpacity(0.04),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 6,
-                            runSpacing: 6,
-                            children: trayNumbers.map((trayNumber) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: AppTheme.onSurfaceVariant.withOpacity(0.2),
-                                    width: 1,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.03),
-                                      blurRadius: 3,
-                                      offset: const Offset(0, 1),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      trayNumber,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppTheme.onSurface,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    GestureDetector(
-                                      onTap: () {
-                                        controller.removeTrayNumber(itemId, trayNumber);
-                                        controller.update(['trays_$itemId']);
-                                      },
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.error.withOpacity(0.1),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.close_rounded,
-                                          size: 10,
-                                          color: AppTheme.error,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    )
-                        : const SizedBox.shrink();
-                  },
-                ),
-
-                // Enhanced Action Row
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppTheme.surfaceVariant.withOpacity(0.4),
-                        AppTheme.surfaceVariant.withOpacity(0.1),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: AppTheme.onSurfaceVariant.withOpacity(0.08),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      // Refined items count
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: AppTheme.info.withOpacity(0.2),
+                            color: AppTheme.error.withOpacity(0.2),
                             width: 1,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.info.withOpacity(0.1),
-                              blurRadius: 3,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
                         ),
                         child: Row(
-                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
-                              Icons.inventory_outlined,
-                              size: 12,
-                              color: AppTheme.info,
+                              Icons.error_outline_rounded,
+                              color: AppTheme.error,
+                              size: 16,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${item.lItem ?? 21}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.info,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Text(
-                              'items',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: AppTheme.info.withOpacity(0.8),
-                                fontWeight: FontWeight.w500,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMessage,
+                                style: const TextStyle(
+                                  color: AppTheme.error,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ],
                         ),
+                      )
+                          : const SizedBox.shrink();
+                    },
+                  ),
+
+                  // Refined Tray Numbers
+                  GetBuilder<TrayAssignerController>(
+                    id: 'trays_$itemId',
+                    builder: (controller) {
+                      final trayNumbers = controller.getTrayNumbers(itemId);
+                      return trayNumbers.isNotEmpty
+                          ? Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              cardColors['primary']!.withOpacity(0.06),
+                              cardColors['primary']!.withOpacity(0.02),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: cardColors['primary']!.withOpacity(0.15),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: cardColors['primary']!.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.inventory_2_rounded,
+                                    size: 12,
+                                    color: cardColors['primary'],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Tray Numbers',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: cardColors['primary'],
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: trayNumbers.map((trayNumber) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: AppTheme.onSurfaceVariant.withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.03),
+                                        blurRadius: 3,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        trayNumber,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.onSurface,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      GestureDetector(
+                                        onTap: isOnHold
+                                            ? null
+                                            : () {
+                                          controller.removeTrayNumber(itemId, trayNumber);
+                                          controller.update(['trays_$itemId']);
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.error.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.close_rounded,
+                                            size: 10,
+                                            color: isOnHold ? AppTheme.onSurfaceVariant : AppTheme.error,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      )
+                          : const SizedBox.shrink();
+                    },
+                  ),
+
+                  // Enhanced Action Row
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppTheme.surfaceVariant.withOpacity(0.4),
+                          AppTheme.surfaceVariant.withOpacity(0.1),
+                        ],
                       ),
-
-                      const SizedBox(width: 12),
-
-                      // Refined tray input
-                      Expanded(
-                        child: Container(
-                          height: 36,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppTheme.onSurfaceVariant.withOpacity(0.08),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        // Refined items count
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.info.withOpacity(0.2),
+                              width: 1,
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.primaryTeal.withOpacity(0.08),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
+                                color: AppTheme.info.withOpacity(0.1),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
-                          child: TextField(
-                            controller: controller.getTrayController(itemId),
-                            focusNode: controller.getTrayFocusNode(itemId),
-                            textAlign: TextAlign.center,
-                            cursorColor: AppTheme.primaryTeal,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                              LengthLimitingTextInputFormatter(5),
-                            ],
-                            onSubmitted: (value) => controller.onTrayNumberSubmitted(item, value),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.onSurface,
-                              letterSpacing: 0.3,
-                            ),
-                            decoration: const InputDecoration(
-                              hintText: 'Enter Tray Number',
-                              hintStyle: TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w400,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.inventory_outlined,
+                                size: 12,
+                                color: AppTheme.info,
                               ),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${item.lItem ?? 21}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.info,
+                                ),
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                'items',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  color: AppTheme.info.withOpacity(0.8),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Refined tray input - DISABLED when on hold
+                        Expanded(
+                          child: Container(
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: isOnHold ? AppTheme.surfaceVariant.withOpacity(0.3) : Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: isOnHold
+                                  ? []
+                                  : [
+                                BoxShadow(
+                                  color: AppTheme.primaryTeal.withOpacity(0.08),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: controller.getTrayController(itemId),
+                              focusNode: controller.getTrayFocusNode(itemId),
+                              enabled: !isOnHold,
+                              textAlign: TextAlign.center,
+                              cursorColor: AppTheme.primaryTeal,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                LengthLimitingTextInputFormatter(5),
+                              ],
+                              onSubmitted: (value) => controller.onTrayNumberSubmitted(item, value),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isOnHold ? AppTheme.onSurfaceVariant : AppTheme.onSurface,
+                                letterSpacing: 0.3,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: isOnHold ? 'On Hold' : 'Enter Tray Number',
+                                hintStyle: TextStyle(
+                                  fontSize: 11,
+                                  color: AppTheme.onSurfaceVariant,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(width: 12),
+                        const SizedBox(width: 12),
 
-                      // Enhanced submit button
-                      GetBuilder<TrayAssignerController>(
-                        id: 'submit_$itemId',
-                        builder: (controller) {
-                          final hasTrays = controller.getTrayNumbers(itemId).isNotEmpty;
-                          return hasTrays
-                              ? GestureDetector(
-                            onTap: () => controller.handleManualSubmit(item),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppTheme.success,
-                                    AppTheme.success.withOpacity(0.8),
+                        // Enhanced submit button - DISABLED when on hold
+                        GetBuilder<TrayAssignerController>(
+                          id: 'submit_$itemId',
+                          builder: (controller) {
+                            final hasTrays = controller.getTrayNumbers(itemId).isNotEmpty;
+                            return hasTrays && !isOnHold
+                                ? GestureDetector(
+                              onTap: () => controller.handleManualSubmit(item),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.success,
+                                      AppTheme.success.withOpacity(0.8),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppTheme.success.withOpacity(0.3),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
                                   ],
                                 ),
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.success.withOpacity(0.3),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                                child: const Icon(
+                                  Icons.check_rounded,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                               ),
-                              child: const Icon(
-                                Icons.check_rounded,
-                                color: Colors.white,
-                                size: 16,
-                              ),
-                            ),
-                          )
-                              : const SizedBox.shrink();
-                        },
-                      ),
-                    ],
+                            )
+                                : const SizedBox.shrink();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
 
   Widget _buildRefinedDetailItem(IconData icon, String label, String value, Color accentColor) {
     return Container(

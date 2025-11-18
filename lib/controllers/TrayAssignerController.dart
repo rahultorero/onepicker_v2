@@ -591,15 +591,23 @@ class TrayAssignerController extends GetxController {
           : null;
 
       final trayListString = trayList.join(',');
-      await postAssignTray(item, trayListString, trayList.length);
+      // Call the API and get whether it was the last item
+      final isLastItem = await postAssignTray(item, trayListString, trayList.length);
 
-
-      // Small delay to ensure UI has processed the update
+// Small delay to ensure UI has processed the update
       await Future.delayed(const Duration(milliseconds: 100));
 
       if (nextItem != null && filteredTrayList.isNotEmpty) {
+        // There are more items, focus on the next one
         _focusSpecificItem(nextItem);
       } else {
+        // This was the last item
+        if (isLastItem) {
+          // Wait 2 seconds so user can see the success message
+          await Future.delayed(const Duration(seconds: 2));
+        }
+
+        // Close the screen and refresh
         Get.back();
         fetchSearchFilterList(selectedFilterType.value);
       }
@@ -699,7 +707,7 @@ class TrayAssignerController extends GetxController {
   }
 
   // Post assign tray API call
-  Future<void> postAssignTray(TrayAssignerData item, String trayList, int trayCount) async {
+  Future<bool> postAssignTray(TrayAssignerData item, String trayList, int trayCount) async {
     try {
       isLoading(true);
 
@@ -757,8 +765,12 @@ class TrayAssignerController extends GetxController {
               snackPosition: SnackPosition.BOTTOM,
               backgroundColor: Colors.green,
               colorText: Colors.white,
+              duration: const Duration(seconds: 2),
             );
           }
+
+          // Return true if this was the last item
+          return filteredTrayList.isEmpty;
         } else {
           Get.snackbar(
             'Error',
@@ -767,6 +779,7 @@ class TrayAssignerController extends GetxController {
             backgroundColor: Colors.red,
             colorText: Colors.white,
           );
+          return false;
         }
       }
     } catch (e) {
@@ -781,6 +794,8 @@ class TrayAssignerController extends GetxController {
     } finally {
       isLoading(false);
     }
+
+    return false;
   }
 
   // Enhanced QR Scanner with mobile_scanner

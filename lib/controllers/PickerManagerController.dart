@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -38,6 +40,8 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
 
   var searchQuery = ''.obs;
   var filteredPickerList = <PickerData>[].obs;
+  Timer? _clearSearchTimer;
+
 
   late PickerData currentPicker;
 
@@ -66,23 +70,81 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
   @override
   void onClose() {
     tabController.dispose();
+    _clearSearchTimer?.cancel();
+
     super.onClose();
   }
 
   void filterPickerList(String query) {
     searchQuery.value = query;
+    _clearSearchTimer?.cancel();
 
     if (query.isEmpty) {
-      filteredPickerList.assignAll(pickerList);
-    } else {
-      final queryLower = query.toLowerCase();
+      filteredPickerList.value = pickerList;
+      return;
+    }
 
-      filteredPickerList.assignAll(
-        pickerList.where((picker) {
-          final trayNo = picker.trayNo?.toLowerCase() ?? '';
-          return trayNo.contains(queryLower);
-        }).toList(),
-      );
+    final filtered = pickerList.where((picker) {
+      final trayNo = picker.trayNo?.toLowerCase() ?? '';
+      final searchLower = query.toLowerCase();
+      return trayNo.contains(searchLower);
+    }).toList();
+
+    filteredPickerList.value = filtered;
+
+    // If search query is 3+ characters and no results found, clear after 2 seconds
+    if (query.length >= 3 && filtered.isEmpty) {
+      _clearSearchTimer = Timer(const Duration(seconds: 1), () {
+        clearSearch();
+      });
+    }
+  }
+
+  Color _getExpiryColor(String? expiryDate) {
+    if (expiryDate == null || expiryDate == 'N/A' || expiryDate.isEmpty) {
+      return AppTheme.primaryTeal; // Default color
+    }
+
+    try {
+      // Parse the expiry date (format: MM/YY)
+      final parts = expiryDate.split('/');
+      if (parts.length != 2) return AppTheme.primaryTeal;
+
+      final expMonth = int.parse(parts[0]);
+      int expYear = int.parse(parts[1]);
+
+      // Convert 2-digit year to 4-digit year
+      // Assuming years 00-99: if < 50 then 2000s, else 1900s
+      // But for medicine, we assume 2000s (2025, 2036, etc.)
+      if (expYear < 100) {
+        expYear += 2000; // 25 becomes 2025, 36 becomes 2036
+      }
+
+      // Get current date
+      final now = DateTime.now();
+      final currentMonth = now.month;
+      final currentYear = now.year;
+
+      // Calculate difference in months
+      final monthsDifference = (expYear - currentYear) * 12 + (expMonth - currentMonth);
+
+      // Color logic based on months remaining
+      if (monthsDifference < 0) {
+        // Already expired
+        return Colors.red;
+      } else if (monthsDifference <= 3) {
+        // 3 months or less - RED (critical)
+        return Colors.red;
+      } else if (monthsDifference <= 6) {
+        // 4 to 6 months - ORANGE (warning)
+        return Colors.orange;
+      } else {
+        // More than 6 months - NORMAL (safe)
+        return AppTheme.primaryTeal;
+      }
+    } catch (e) {
+      // If parsing fails, return default color
+      return AppTheme.primaryTeal;
     }
   }
 
@@ -90,6 +152,7 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
   void clearSearch() {
     searchQuery.value = '';
     searchController.clear(); // clears the text field
+    _clearSearchTimer?.cancel();
 
     filteredPickerList.assignAll(pickerList);
   }
@@ -632,11 +695,24 @@ class PickerManagercontroller extends GetxController with GetSingleTickerProvide
                             String formattedExpDate = 'E:';
                             if (stockDetail.expDate?.isNotEmpty == true) {
                               try {
-                                final inputFormat = DateFormat('dd-MM-yyyy');
+                                print("check exp ${stockDetail.expDate.toString()}");
+
+                                DateTime date;
+
+                                // Check if it's ISO format (contains 'T' or 'Z')
+                                if (stockDetail.expDate!.contains('T') || stockDetail.expDate!.contains('Z')) {
+                                  // Parse ISO 8601 format
+                                  date = DateTime.parse(stockDetail.expDate!);
+                                } else {
+                                  // Parse dd-MM-yyyy format
+                                  final inputFormat = DateFormat('dd-MM-yyyy');
+                                  date = inputFormat.parse(stockDetail.expDate!);
+                                }
+
                                 final outputFormat = DateFormat('MM/yy');
-                                final date = inputFormat.parse(stockDetail.expDate!);
                                 formattedExpDate = outputFormat.format(date);
                               } catch (e) {
+                                print("Error parsing date: $e");
                                 formattedExpDate = 'E:';
                               }
                             }

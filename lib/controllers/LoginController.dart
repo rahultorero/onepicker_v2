@@ -224,10 +224,10 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
           );
 
 
-
           // Show selection bottomsheet instead of navigating directly
           await Future.delayed(const Duration(milliseconds: 500));
           showSelectionBottomSheet();
+
         } else {
           Get.snackbar(
             'Error',

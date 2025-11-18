@@ -128,7 +128,7 @@ class PickerManager extends StatelessWidget {
               final isTablet = constraints.maxWidth >= 600;
 
               // Dynamic flex values based on device type
-              final leftFlex = isTablet ? 20 : 38;
+              final leftFlex = isTablet ? 21 : 38;
               final rightFlex = isTablet ? 80 : 70;
 
               // Split Screen Layout
@@ -202,10 +202,14 @@ class PickerManager extends StatelessWidget {
                                       index: originalIndex,
                                       isSelected: controller.selectedPickerIndex.value == originalIndex,
                                       onTap: () => controller.onPickerItemSelect(originalIndex, pickerData),
-                                    ));
+                                      isTablet: isTablet,
+                                      searchQuery: controller.searchQuery.value, // Pass search query
+                                    )
+                                    );
                                   },
                                 )),
                               ),
+
                             ],
                           ),
                         ),
@@ -456,6 +460,9 @@ class MangerPickerCard extends StatefulWidget {
   final int index;
   final bool isSelected;
   final VoidCallback onTap;
+  final String searchQuery;
+  final bool isTablet;
+
 
   const MangerPickerCard({
     Key? key,
@@ -463,6 +470,8 @@ class MangerPickerCard extends StatefulWidget {
     required this.index,
     required this.isSelected,
     required this.onTap,
+    this.searchQuery = '',
+    this.isTablet = false
   }) : super(key: key);
 
   @override
@@ -533,6 +542,78 @@ class _MangerPickerCardState extends State<MangerPickerCard>
       Colors.white.withOpacity(0.7),
     ];
   }
+
+  Widget _buildHighlightedText(String text, String query, TextStyle style) {
+    if (query.isEmpty || text.isEmpty) {
+      return Text(
+        text,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+
+    if (!lowerText.contains(lowerQuery)) {
+      return Text(
+        text,
+        style: style,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    final List<TextSpan> spans = [];
+    int currentIndex = 0;
+
+    while (currentIndex < text.length) {
+      final matchIndex = lowerText.indexOf(lowerQuery, currentIndex);
+
+      if (matchIndex == -1) {
+        // No more matches, add remaining text
+        if (currentIndex < text.length) {
+          spans.add(TextSpan(
+            text: text.substring(currentIndex),
+            style: style, // Use the original style for non-matched text
+          ));
+        }
+        break;
+      }
+
+      // Add text before match (non-highlighted, normal text)
+      if (matchIndex > currentIndex) {
+        spans.add(TextSpan(
+          text: text.substring(currentIndex, matchIndex),
+          style: style, // Use the original style for non-matched text
+        ));
+      }
+
+      // Add matched text with highlight - BLACK TEXT on colored background
+      final matchEnd = matchIndex + query.length;
+      spans.add(TextSpan(
+        text: text.substring(matchIndex, matchEnd),
+        style: style.copyWith(
+          backgroundColor: _getIconColor().withOpacity(0.5),
+          fontWeight: FontWeight.w900,
+          color: Colors.black, // Highlighted text is black
+        ),
+      ));
+
+      currentIndex = matchEnd;
+    }
+
+    return RichText(
+      text: TextSpan(
+        children: spans,
+        style: style, // Add the base style to RichText
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
 
   List<String> _getTrayNumbers() {
     final trayNo = widget.pickerData.trayNo ?? '';
@@ -692,10 +773,11 @@ class _MangerPickerCardState extends State<MangerPickerCard>
                           ),
                         ],
                       ),
-                      child: Text(
+                      child: _buildHighlightedTextForChip(
                         trayNo,
-                        style: const TextStyle(
-                          fontSize: 11,
+                        widget.searchQuery,
+                        TextStyle(
+                          fontSize: widget.isTablet ? 14 : 12,
                           fontWeight: FontWeight.w600,
                           color: Colors.white,
                         ),
@@ -710,6 +792,62 @@ class _MangerPickerCardState extends State<MangerPickerCard>
       ],
     );
   }
+
+  Widget _buildHighlightedTextForChip(String text, String query, TextStyle style) {
+    if (query.isEmpty || text.isEmpty) {
+      return Text(text, style: style);
+    }
+
+    final lowerText = text.toLowerCase();
+    final lowerQuery = query.toLowerCase();
+
+    if (!lowerText.contains(lowerQuery)) {
+      return Text(text, style: style);
+    }
+
+    final List<TextSpan> spans = [];
+    int currentIndex = 0;
+
+    while (currentIndex < text.length) {
+      final matchIndex = lowerText.indexOf(lowerQuery, currentIndex);
+
+      if (matchIndex == -1) {
+        if (currentIndex < text.length) {
+          spans.add(TextSpan(
+            text: text.substring(currentIndex),
+            style: style,
+          ));
+        }
+        break;
+      }
+
+      if (matchIndex > currentIndex) {
+        spans.add(TextSpan(
+          text: text.substring(currentIndex, matchIndex),
+          style: style,
+        ));
+      }
+
+      final matchEnd = matchIndex + query.length;
+      spans.add(TextSpan(
+        text: text.substring(matchIndex, matchEnd),
+        style: style.copyWith(
+          backgroundColor: Colors.black.withOpacity(0.3),
+          fontWeight: FontWeight.w900,
+          decoration: TextDecoration.underline,
+          decorationColor: Colors.white,
+          decorationThickness: 2,
+        ),
+      ));
+
+      currentIndex = matchEnd;
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+    );
+  }
+
 
   Widget _buildSingleTrayRow(String displayText, bool canExpand, Color iconColor, Color gradientColor) {
     return GestureDetector(
@@ -768,15 +906,14 @@ class _MangerPickerCardState extends State<MangerPickerCard>
             ),
             const SizedBox(width: 5),
             Flexible(
-              child: Text(
+              child:  _buildHighlightedText(
                 displayText,
-                style: const TextStyle(
-                  fontSize: 12,
+                widget.searchQuery,
+                TextStyle(
+                  fontSize: widget.isTablet ? 14 : 12,
                   fontWeight: FontWeight.w600,
                   color: Colors.black87,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -862,9 +999,9 @@ class _MangerPickerCardState extends State<MangerPickerCard>
                       Expanded(
                         child: Text(
                           widget.pickerData.invNo ?? 'N/A',
-                          style: const TextStyle(
+                          style:  TextStyle(
                             color: Colors.black87,
-                            fontSize: 13,
+                            fontSize: widget.isTablet ? 15 : 13,
                             fontWeight: FontWeight.w800,
                           ),
                           maxLines: 1,
@@ -933,8 +1070,8 @@ class _MangerPickerCardState extends State<MangerPickerCard>
                         const SizedBox(width: 5),
                         Text(
                           widget.pickerData.iTime ?? 'N/A',
-                          style: const TextStyle(
-                            fontSize: 12,
+                          style:  TextStyle(
+                            fontSize: widget.isTablet ? 14 : 12,
                             fontWeight: FontWeight.w600,
                             color: Colors.black87,
                           ),
@@ -1252,7 +1389,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       child: _buildCompactInfo(
                         widget.detail.sExpDate ?? 'N/A',
                         Icons.schedule,
-                        AppTheme.amberGold,
+                        _getExpiryColor(widget.detail.sExpDate),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1351,6 +1488,52 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
     );
   }
 
+  Color _getExpiryColor(String? expiryDate) {
+    if (expiryDate == null || expiryDate == 'N/A' || expiryDate.isEmpty) {
+      return AppTheme.primaryTeal; // Default color
+    }
+
+    try {
+      // Parse the expiry date (format: MM/YYYY)
+      final parts = expiryDate.split('/');
+      if (parts.length != 2) return AppTheme.primaryTeal;
+
+      final expMonth = int.parse(parts[0]);
+      final expYear = int.parse(parts[1]);
+
+      // Get current date
+      final now = DateTime.now();
+      final currentMonth = now.month;
+      final currentYear = now.year;
+
+      // Create DateTime objects for comparison (using last day of the month)
+      final expiryDateTime = DateTime(expYear, expMonth + 1, 0); // Last day of expiry month
+      final currentDateTime = DateTime(currentYear, currentMonth, now.day);
+
+      // Calculate difference in months
+      final monthsDifference = (expYear - currentYear) * 12 + (expMonth - currentMonth);
+
+      // Color logic based on months remaining
+      if (monthsDifference < 0) {
+        // Already expired
+        return Colors.red;
+      } else if (monthsDifference <= 3) {
+        // 3 months or less - RED (critical)
+        return Colors.red;
+      } else if (monthsDifference <= 6) {
+        // 4 to 6 months - ORANGE (warning)
+        return Colors.orange;
+      } else {
+        // More than 6 months - NORMAL (safe)
+        return AppTheme.primaryTeal;
+      }
+    } catch (e) {
+      // If parsing fails, return default color
+      return AppTheme.primaryTeal;
+    }
+  }
+
+
   void _showReviewDialog(BuildContext context) async {
     String? selectedReason;
     String? selectedBatch;
@@ -1426,7 +1609,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Item Review',
+                                  'Product Review',
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,
@@ -1463,6 +1646,97 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                       ),
                     ),
 
+                    Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primaryTeal.withOpacity(0.05),
+                              AppTheme.lightTeal.withOpacity(0.05),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.primaryTeal.withOpacity(0.3),
+                            width: 1.5,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryTeal.withOpacity(0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.detail.itemName ?? 'Unknown Item'} ${widget.detail.packing ?? ''}',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Text(
+                                  'B: ${widget.detail.batchNo ?? 'N/A'}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.onSurface.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(width:60),
+
+                                Text(
+                                  'P: ${widget.detail.packing ?? 'N/A'}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.onSurface.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  'M: ${widget.detail.mrp != null ? '₹${widget.detail.mrp!.toStringAsFixed(2)}' : 'N/A'}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.onSurface.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(width:60),
+                                Text(
+                                  'E: ${widget.detail.sExpDate ?? 'N/A'}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.onSurface.withOpacity(0.8),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+
+                          ],
+                        ),
+                      ),
+                    ),
+
+
                     // Scrollable Content
                     Expanded(
                       child: SingleChildScrollView(
@@ -1471,74 +1745,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Item Details Card (keep existing)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    AppTheme.primaryTeal.withOpacity(0.05),
-                                    AppTheme.lightTeal.withOpacity(0.05),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: AppTheme.primaryTeal.withOpacity(0.3),
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.primaryTeal.withOpacity(0.1),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${widget.detail.itemName ?? 'Unknown Item'} ${widget.detail.packing ?? ''}',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.onSurface,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'B: ${widget.detail.batchNo ?? 'N/A'}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.onSurface.withOpacity(0.8),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'E: ${widget.detail.sExpDate ?? 'N/A'}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.onSurface.withOpacity(0.8),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'M: ${widget.detail.mrp != null ? '₹${widget.detail.mrp!.toStringAsFixed(2)}' : 'N/A'}',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.onSurface.withOpacity(0.8),
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
 
-                            const SizedBox(height: 24),
 
                             // Review Options Section
                             Row(
@@ -1604,6 +1811,9 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                         // After API call, update the local batchNumbers list
                                         setState(() {
                                           batchNumbers = widget.stockDetailList
+                                              .where((stock) =>
+                                          stock.batchNo != widget.detail.batchNo ||
+                                              stock.mrp != widget.detail.mrp)
                                               .map((stock) => "${stock.batchNo} / ₹${stock.mrp}")
                                               .toList();
                                           isLoading = false;

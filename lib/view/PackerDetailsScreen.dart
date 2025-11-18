@@ -444,6 +444,7 @@ class PackerDetailCard extends StatelessWidget {
                                 onTap: () => pickerController.showItemStockDetail(
                                   detail.itemDetailId ?? 0,
                                   detail.itemName.toString(),
+                                  detail.packing ?? ''
                                 ),
                               ),
                               if (detail.packing != null)

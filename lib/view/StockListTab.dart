@@ -605,7 +605,36 @@ class _StockItemCardState extends State<StockItemCard> {
                               (value) {
                             setState(() {
                               stockInput = value;
-                              stockCorrect = value == '${widget.stockDetail.stock ?? 0}';
+                              final actualStock = widget.stockDetail.stock ?? 0;
+                              final expectedDigits = actualStock.toString().length;
+                              final currentDigits = value.length;
+
+                              // Only validate when user has typed the expected number of digits
+                              if (currentDigits >= expectedDigits) {
+                                stockCorrect = value == '$actualStock';
+
+                                // Show snackbar when value is wrong
+                                if (value.isNotEmpty && !stockCorrect!) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Correct Stock is $actualStock',
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                      backgroundColor: Colors.red,
+                                      duration: Duration(milliseconds: 500),
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: EdgeInsets.all(16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                // User is still typing, reset the correct flag
+                                stockCorrect = null;
+                              }
                             });
                           },
                         ),
@@ -735,7 +764,7 @@ class _StockItemCardState extends State<StockItemCard> {
           child: TextField(
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
-            textAlignVertical: TextAlignVertical.center, // 👈 vertical center
+            textAlignVertical: TextAlignVertical.center,
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
@@ -767,7 +796,6 @@ class _StockItemCardState extends State<StockItemCard> {
       ],
     );
   }
-
   String _getHint(int value) {
     if (value >= 10) {
       return '${value.toString()[0]}*';
