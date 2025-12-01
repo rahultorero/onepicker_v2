@@ -26,6 +26,8 @@ class CheckerController extends GetxController {
   var packerDetails = <PickerMenuDetail>[].obs;
   var selectedLocation = ''.obs;
   var searchQuery = ''.obs;
+  final showAllTrays = false.obs; // RxBool
+
 
   // Search controller
   final TextEditingController searchController = TextEditingController();
@@ -62,6 +64,8 @@ class CheckerController extends GetxController {
       }).toList());
     }
   }
+
+
 
   // API call to fetch packer list
   Future<void> fetchPackerList() async {
@@ -244,6 +248,7 @@ class CheckerController extends GetxController {
             "itemdetailid": item.itemDetailId?.toString() ?? "",
             "batchno": item.batchNo ?? "",
             "mrp": item.mrp?.toString() ?? "",
+
           };
           itemDetailsArray.add(itemDetail);
         }
@@ -329,7 +334,6 @@ class CheckerController extends GetxController {
 
 
   }
-
   Future<void> submitCheckedAllItems(PickerData pickerData, List<PickerMenuDetail> checkedItems) async {
     if (checkedItems.isEmpty) {
       Get.snackbar(
@@ -354,7 +358,7 @@ class CheckerController extends GetxController {
         "siid": pickerData.sIId.toString(),
         "brchid": LoginController.selectedBranchId.toString(),
         "empid": loginData?.response?.empId.toString(),
-        "settingPCamera": HomeScreenController.selectCamera ?? "", // Camera setting
+        "settingPCamera": HomeScreenController.selectCamera ?? "",
         "printId": HomeScreenController.selectPrinter ?? "",
         "settingPrint": settingPrint ?? "",
         "brk": LoginController.selectedFloorId.toString(),
@@ -365,7 +369,6 @@ class CheckerController extends GetxController {
       // Build item details array
       List<Map<String, dynamic>> itemDetailsArray = [];
       for (var item in checkedItems) {
-        // Only add item if pnote is not null and not empty
         if (item.pNote != null && item.pNote.toString().isNotEmpty) {
           Map<String, dynamic> itemDetail = {
             "siid": pickerData.sIId.toString(),
@@ -373,6 +376,7 @@ class CheckerController extends GetxController {
             "batchno": item.batchNo ?? "",
             "mrp": item.mrp?.toString() ?? "",
             "pnote": item.pNote.toString(),
+            "nbatch": item.nBatch
           };
           itemDetailsArray.add(itemDetail);
         }
@@ -394,29 +398,23 @@ class CheckerController extends GetxController {
         final responseData = json.decode(response.body);
 
         if (responseData['status'] == '200') {
-          // Success - show success message and navigate back
-          print("check result ------> ${responseData['message'] }");
+          print("check result ------> ${responseData['message']}");
+
           Get.snackbar(
             'Success',
             responseData['message'] ?? 'Items submitted successfully!',
             backgroundColor: Colors.green.withOpacity(0.85),
-            colorText: Colors.white, // 👈 more contrast
-            duration: const Duration(seconds: 3),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 2),
             snackPosition: SnackPosition.BOTTOM,
             margin: const EdgeInsets.all(12),
             borderRadius: 8,
           );
 
-
-          // Navigate back to previous screen after short delay
-          Future.delayed(const Duration(milliseconds: 500), () {
-            Get.back();
-            // Refresh the packer list to reflect updated status
-            refreshData();
-          });
+          // Show celebration dialog
+          _showCelebrationDialog(pickerData.trayNo);
 
         } else if (responseData['status'] == '401' || responseData['status'] == '400') {
-          // Authentication error
           Get.snackbar(
             'Error',
             'Authentication failed. Please login again.',
@@ -424,7 +422,6 @@ class CheckerController extends GetxController {
             colorText: Colors.red,
           );
         } else {
-          // Other error status
           Get.snackbar(
             'Error',
             responseData['message'] ?? 'Failed to submit items',
@@ -452,12 +449,253 @@ class CheckerController extends GetxController {
     } finally {
       isSubmittingData(false);
     }
-
-
-
   }
 
+  void _showCelebrationDialog(String? trayNo) {
+    showDialog(
+      context: Get.context!,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Stack(
+            children: [
+              // Main Content
+              Container(
+                margin: const EdgeInsets.only(top: 40),
+                padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.withOpacity(0.3),
+                      blurRadius: 30,
+                      spreadRadius: 5,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Success Title
+                    ShaderMask(
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: [Colors.green[600]!, Colors.green[400]!],
+                      ).createShader(bounds),
+                      child: const Text(
+                        'Success!',
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
 
+                    const SizedBox(height: 8),
+
+                    // Celebration Emojis
+                    const Text(
+                      '🎉 🎊 ✨ 🎈',
+                      style: TextStyle(fontSize: 28),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Divider
+                    Container(
+                      height: 1,
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.green[300]!,
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // Bill Closed Message
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.green[50]!,
+                            Colors.green[100]!,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.green[200]!,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.receipt_long,
+                            color: Colors.green[700],
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Your Bill is Closed',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.green[800],
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Tray Number Section
+                    if (trayNo != null) ...[
+                      const SizedBox(height: 20),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.green[600]!,
+                              Colors.green[700]!,
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.green.withOpacity(0.4),
+                              blurRadius: 15,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.grid_view_rounded,
+                                  color: Colors.white.withOpacity(0.9),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Tray Number',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Text(
+                                trayNo,
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Floating Success Icon
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.green[400]!,
+                          Colors.green[600]!,
+                        ],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withOpacity(0.5),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_outline,
+                      size: 50,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Auto close dialog and navigate back after 3 seconds
+    // Auto close dialog and navigate back after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      // Close dialog
+      Navigator.of(Get.context!).pop();
+
+      // Wait a bit then close screen
+      Future.delayed(const Duration(milliseconds: 300), () {
+        Navigator.of(Get.context!).pop();
+
+        // Refresh after navigation
+        Future.delayed(const Duration(milliseconds: 200), () {
+          refreshData();
+        });
+      });
+    });
+  }
 
   Future<void> assignTray({
     required int siId,

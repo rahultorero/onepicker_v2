@@ -8,10 +8,37 @@ import 'package:onepicker/controllers/HomeScreenController.dart';
 import '../model/PickerDataModel.dart';
 import '../theme/AppTheme.dart';
 
-class CheckerScreen extends StatelessWidget {
+class CheckerScreen extends StatefulWidget {
+  @override
+  State<CheckerScreen> createState() => _CheckerScreenState();
+}
+
+class _CheckerScreenState extends State<CheckerScreen> {
+
+  late final CheckerController controller;
+  final FocusNode _searchFocusNode = FocusNode();
+
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.put(CheckerController());
+
+    // Auto-focus on search field after the screen builds
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _searchFocusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(CheckerController());
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -122,7 +149,7 @@ class CheckerScreen extends StatelessWidget {
 
   Widget _buildSearchBar(CheckerController controller) {
     return Container(
-      margin: const EdgeInsets.only(left: 16,right: 16,top: 12),
+      margin: const EdgeInsets.only(left: 16, right: 16, top: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -144,7 +171,9 @@ class CheckerScreen extends StatelessWidget {
           Expanded(
             child: TextField(
               controller: controller.searchController,
+              focusNode: _searchFocusNode,  // ⭐ Add this line
               keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.search,  // Optional: better keyboard action
               decoration: InputDecoration(
                 hintText: 'Search by Invoice, Tray No, or Type...',
                 hintStyle: TextStyle(
@@ -199,6 +228,7 @@ class CheckerScreen extends StatelessWidget {
       ),
     );
   }
+
 
   Widget _buildBody(CheckerController controller) {
     return RefreshIndicator(
@@ -357,7 +387,14 @@ class CheckerScreen extends StatelessWidget {
               return EnhancedPackerItemCard(
                 packerData: packerData,
                 index: index,
-                onTap: () => controller.onPackerItemTap(packerData),
+                onTap: () => {
+                  controller.onPackerItemTap(packerData),
+
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                  controller.searchController.clear();
+                  })
+                },
+                isTablet: isTablet,
               );
             },
           ),
@@ -372,12 +409,14 @@ class EnhancedPackerItemCard extends StatelessWidget {
   final PickerData packerData;
   final int index;
   final VoidCallback onTap;
+  final bool isTablet;
 
   const EnhancedPackerItemCard({
     Key? key,
     required this.packerData,
     required this.index,
     required this.onTap,
+    required this.isTablet,
   }) : super(key: key);
 
   // Enhanced delivery type color configuration with better visibility
@@ -631,6 +670,8 @@ class EnhancedPackerItemCard extends StatelessWidget {
                         'Tray',
                         packerData.trayNo ?? 'N/A',
                         themeColor,
+                        isTablet
+
                       ),
 
                       const SizedBox(height: 8),
@@ -638,9 +679,10 @@ class EnhancedPackerItemCard extends StatelessWidget {
                       // Time information
                       _buildInfoRow(
                         Icons.schedule_outlined,
-                        'Time',
+                        'i-Time',
                         _formatTime(packerData.iTime),
                         themeColor,
+                        isTablet
                       ),
                     ],
                   ),
@@ -653,7 +695,7 @@ class EnhancedPackerItemCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, Color color) {
+  Widget _buildInfoRow(IconData icon, String label, String value, Color color,bool isTablet) {
     return Row(
       children: [
         Container(
@@ -688,8 +730,8 @@ class EnhancedPackerItemCard extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 12,
+                style: TextStyle(
+                  fontSize: isTablet ? 14 : 12,
                   color: AppTheme.onSurface,
                   fontWeight: FontWeight.w600,
                 ),

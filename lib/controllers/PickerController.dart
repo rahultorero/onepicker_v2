@@ -1191,6 +1191,7 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
 
   // API call to submit picker with selected items
   Future<void> submitPicker() async {
+
     if (selectedDetailIds.isEmpty) {
       Get.snackbar(
         'Warning',
@@ -1229,7 +1230,6 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
       }).map((entry) => entry.value).toList();
 
 
-
       print("check selected ${selectedDetailIds.toString()}");
 
       print("check selected ${selectedPickerIndex.value}");
@@ -1251,6 +1251,7 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           'batchno': detail.batchNo ?? '',
           'mrp': detail.mrp ?? 0.0,
           'pnote': detail.pNote ?? '',
+          'nbatch': detail.nBatch ?? '',
         }).toList(),
       };
 
@@ -1539,7 +1540,7 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           // Extract tray number from response if available
           String? trayNo = jsonData['trayno']?.toString() ?? jsonData['TrayNo']?.toString();
 
-          _showCelebrationDialog("92000");
+          _showCelebrationDialog(trayNo);
           print("333333333");
 
         }
@@ -1922,7 +1923,6 @@ class PickerController extends GetxController with GetSingleTickerProviderStateM
           ElevatedButton(
             onPressed: () {
               Get.back();
-              submitPicker();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.accentGreen,

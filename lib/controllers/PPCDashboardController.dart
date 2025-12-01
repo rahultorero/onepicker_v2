@@ -25,11 +25,19 @@ class PPCDashboardController extends GetxController {
   var toDate = DateTime.now().obs;
   var isLoading = false.obs;
   var searchQuery = ''.obs;
+  var searchLeaderQuery = ''.obs;
+
+
   var sortByLineItems = false.obs;
 
   // Data variables
   var performanceDataList = <UserPerformanceData>[].obs;
   var filteredDataList = <UserPerformanceData>[].obs;
+  var filteredLeaderDataList = <UserPerformanceData>[].obs;
+
+  final TextEditingController searchController = TextEditingController();
+
+
 
   // Statistics
   var totalUsers = 0.obs;
@@ -54,6 +62,7 @@ class PPCDashboardController extends GetxController {
     fetchDashboardData();
 
     debounce(searchQuery, (_) => filterData(), time: const Duration(milliseconds: 500));
+    debounce(searchQuery, (_) => filterLeaderData(), time: const Duration(milliseconds: 500));
   }
 
   void setupDashboardTypes() {
@@ -109,6 +118,7 @@ class PPCDashboardController extends GetxController {
       if (response.status == '200') {
         performanceDataList.value = response.data ?? [];
         updateStatistics();
+        filterLeaderData();
         filterData();
       } else {
         Get.snackbar('Error','Failed to fetch data');
@@ -118,6 +128,7 @@ class PPCDashboardController extends GetxController {
       Get.snackbar('Error', 'Network error: ${e.toString()}');
       print("errror${e.toString()}");
       updateStatistics();
+      filterLeaderData();
       filterData();
     } finally {
       isLoading(false);
@@ -162,6 +173,23 @@ class PPCDashboardController extends GetxController {
 
     filteredDataList.value = filtered;
   }
+
+  void filterLeaderData() {
+    var filtered = performanceDataList.where((data) {
+      return (data.name ?? "")
+          .toLowerCase()
+          .contains(searchLeaderQuery.value.toLowerCase()); // 👈 Make sure this is searchLeaderQuery
+    }).toList();
+
+    if (sortByLineItems.value) {
+      filtered.sort((a, b) => (b.lineItem ?? 0).compareTo(a.lineItem ?? 0));
+    } else {
+      filtered.sort((a, b) => (b.tQty ?? 0).compareTo(a.tQty ?? 0));
+    }
+
+    filteredLeaderDataList.value = filtered;
+  }
+
 
   void updateStatistics() {
     totalUsers.value = performanceDataList.length;

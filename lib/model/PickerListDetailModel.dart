@@ -50,6 +50,8 @@ class PickerMenuDetail {
   String? isChk;
   String? pNote;
   bool isSelected;
+  String nBatch;
+  String? tempRemark;
 
   PickerMenuDetail({
     this.itemDetailId,
@@ -76,6 +78,8 @@ class PickerMenuDetail {
     this.isChk,
     this.pNote = "",
     this.isSelected = false,
+    this.nBatch = "",
+    this.tempRemark
   });
 
   factory PickerMenuDetail.fromJson(Map<String, dynamic> json) {
@@ -104,6 +108,8 @@ class PickerMenuDetail {
       isChk: json['IsChk']?.toString(),
       pNote: json['PNote']?.toString() ?? "",
       isSelected: false,
+      nBatch: "",
+      tempRemark: ""
     );
   }
 

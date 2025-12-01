@@ -6,6 +6,7 @@ import 'dart:math' as math;
 import 'package:get/get.dart';
 import 'dart:math' as math;
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:onepicker/bottomsheets/LsnSelectionBottomSheet.dart';
 import 'package:onepicker/controllers/LoginController.dart';
 import 'package:onepicker/model/LSNModel.dart';
@@ -331,11 +332,18 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
     }
   }
 
+  String getTodayDate() {
+    final now = DateTime.now();
+    final formatter = DateFormat('dd/MMM/yyyy');
+    return formatter.format(now);
+  }
+
   Future<void> logout() async {
     try {
       final apiConfig = await ApiConfig.load();
       final prefs = await SharedPreferences.getInstance();
       String? sessionId = prefs.getString('session_id');
+      final userData = await ApiConfig.getLoginData();
 
       if (sessionId == null) {
         print("Session ID not found");
@@ -348,11 +356,14 @@ class HomeScreenController extends GetxController with GetTickerProviderStateMix
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'SessionId': sessionId,
+          "EmpId":userData?.response?.empId,
+          "LDate":getTodayDate()
         }),
-      )
-          .timeout(const Duration(seconds: 10), onTimeout: () {
+      ).timeout(const Duration(seconds: 10), onTimeout: () {
         throw TimeoutException("Request timed out after 10 seconds");
       });
+
+
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);

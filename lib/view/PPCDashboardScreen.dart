@@ -44,31 +44,41 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      body: CustomScrollView(
-        controller: _scrollController,
-        physics: const BouncingScrollPhysics(), // Smooth scrolling
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 140,
-            floating: false,
-            pinned: false,
-            snap: false,
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            flexibleSpace: FlexibleSpaceBar(
-              background: _buildFlexibleHeader(),
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: Theme.of(context).primaryColor, // Customize color
+        backgroundColor: Colors.white,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(), // Smooth scrolling
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 140,
+              floating: false,
+              pinned: false,
+              snap: false,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              flexibleSpace: FlexibleSpaceBar(
+                background: _buildFlexibleHeader(),
+              ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Obx(() => widget.controller.isLoading.value
-                ? _buildLoadingState()
-                : widget.controller.filteredDataList.isEmpty
-                ? _buildEmptyState()
-                : _buildContent()),
-          ),
-        ],
+            SliverToBoxAdapter(
+              child: Obx(() => widget.controller.isLoading.value
+                  ? _buildLoadingState()
+                  : widget.controller.filteredDataList.isEmpty
+                  ? _buildEmptyState()
+                  : _buildContent()),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+// Add this refresh handler method
+  Future<void> _handleRefresh() async {
+    await widget.controller.fetchDashboardData();
   }
 
   Widget _buildFlexibleHeader() {
@@ -78,10 +88,7 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF2563EB), // Deep Blue
-            Color(0xFF06B6D4), // Cyan
-          ], // Clean modern gradient
+          colors: AppTheme.primaryGradient, // Clean modern gradient
         ),
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(24),
@@ -1082,6 +1089,8 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
       backgroundColorHex: backgroundColor,
     );
   }
+
+
   Widget _buildPerformanceCards() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1109,19 +1118,77 @@ class _PPCDashboardScreenState extends State<PPCDashboardScreen> {
             IconButton(
               icon: const Icon(Icons.download, color: Color(0xFF0F172A)),
               onPressed: () {
-                exportToExcel(widget.controller.filteredDataList, context,'Performance Report');
+                exportToExcel(widget.controller.filteredLeaderDataList, context, 'Performance Report');
               },
             ),
           ],
         ),
-        const SizedBox(height: 8), // 👈 control spacing manually
-        Obx(() => ListView.builder(
+        const SizedBox(height: 12),
+
+        // Search Bar
+        Obx(() => TextField(
+          controller: widget.controller.searchController,
+          onChanged: (value) {
+            widget.controller.searchLeaderQuery.value = value;
+            widget.controller.filterLeaderData();
+          },
+          decoration: InputDecoration(
+            hintText: 'Search by name...',
+            hintStyle: TextStyle(
+              color: Color(0xFF94A3B8),
+              fontSize: 14,
+            ),
+            prefixIcon: Icon(Icons.search, color: Color(0xFF64748B)),
+            suffixIcon: widget.controller.searchLeaderQuery.value.isNotEmpty
+                ? IconButton(
+              icon: Icon(Icons.clear, color: Color(0xFF64748B)),
+              onPressed: () {
+                widget.controller.searchController.clear(); // 👈 Clear the controller too
+                widget.controller.searchLeaderQuery.value = '';
+                widget.controller.filterLeaderData();
+              },
+            )
+                : null,
+            filled: true,
+            fillColor: Color(0xFFF1F5F9),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Color(0xFFF59E0B), width: 2),
+            ),
+            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        )),
+
+        const SizedBox(height: 12),
+
+        Obx(() => widget.controller.filteredLeaderDataList.isEmpty
+            ? Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              'No results found',
+              style: TextStyle(
+                color: Color(0xFF94A3B8),
+                fontSize: 14,
+              ),
+            ),
+          ),
+        )
+            : ListView.builder(
           shrinkWrap: true,
-          padding: EdgeInsets.zero, // 👈 removes unwanted space
+          padding: EdgeInsets.zero,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: widget.controller.filteredDataList.length,
+          itemCount: widget.controller.filteredLeaderDataList.length,
           itemBuilder: (context, index) {
-            final data = widget.controller.filteredDataList[index];
+            final data = widget.controller.filteredLeaderDataList[index];
             return _buildPerformanceCard(data, index);
           },
         )),

@@ -8,5 +8,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Medipick_v2"
+rootProject.name = "onepicker_v2"
 include ':app'

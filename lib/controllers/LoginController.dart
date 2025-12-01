@@ -280,7 +280,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
       }
 
       final now = DateTime.now();
-      final sessionId = '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}';
+      final sessionId = '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
 
 
       final response = await http
@@ -520,6 +520,7 @@ class LoginController extends GetxController with GetTickerProviderStateMixin {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print("Raw JSON: ${jsonEncode(data)}"); // This will show the actual JSON
         final serverConnect = ServerConnectModel.fromJson(data);
 
         if (serverConnect.settingData != null) {

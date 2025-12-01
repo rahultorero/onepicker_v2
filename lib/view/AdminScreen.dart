@@ -838,7 +838,7 @@ class EditUserDialog extends StatelessWidget {
       backgroundColor: Colors.transparent,
       child: Container(
         width: double.maxFinite,
-        height: 480, // Fixed height for better control
+        height: 550, // Fixed height for better control
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),

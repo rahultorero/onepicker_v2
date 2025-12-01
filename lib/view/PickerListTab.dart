@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -8,14 +10,112 @@ import '../model/PickerDataModel.dart';
 import '../model/PickerMenuDetailModel.dart';
 import '../model/StockDetailDataModel.dart';
 import '../model/StockDetailModel.dart';
+import '../services/services.dart';
 import '../theme/AppTheme.dart';
 import 'CustomerDetailsDialog.dart';
 
-class PickerListTab extends StatelessWidget {
+class PickerListTab extends StatefulWidget {
+  const PickerListTab({super.key});
+
+  @override
+  State<PickerListTab> createState() => _PickerListTabState();
+}
+
+class _PickerListTabState extends State<PickerListTab> {
+
+  final controller = Get.find<PickerController>();
+
+  Timer? _countdownTimer;
+  int _remainingSeconds = 0;
+  int _totalSeconds = 0;
+  bool _isCountdownActive = false;
+  String totalTray = '0';
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _startCountdown() async {
+    // Cancel any existing timer first
+    _countdownTimer?.cancel();
+
+    totalTray = await ApiConfig.getSsub('PickingTime');
+    Get.log("checking time $totalTray");
+
+    final totalTrays = int.tryParse(totalTray ?? '0') ?? 0;
+    if (totalTrays > 0) {
+      final itemsCount = controller.pickerDetails.length;
+      Get.log("list lengthhh $itemsCount");
+      _totalSeconds = itemsCount * 5; // 5 seconds per item
+      _remainingSeconds = _totalSeconds;
+      _isCountdownActive = true;
+
+      _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+        setState(() {
+          if (_remainingSeconds > 0) {
+            _remainingSeconds--;
+          } else {
+            // _isCountdownActive = false;
+            timer.cancel();
+          }
+        });
+      });
+    } else {
+      Get.log("----------------------------------------------------");
+    }
+  }
+
+// Helper method to get emoji with urgency
+  String _getCountdownEmoji() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) return '⚡';
+    if (progress > 0.50) return '🔥';
+    if (progress > 0.25) return '⏰';
+    return '🚨';
+  }
+
+// Helper method to get urgency message
+  String _getUrgencyMessage() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) return 'Work Fast!';
+    if (progress > 0.50) return 'Speed Up!';
+    if (progress > 0.25) return 'Hurry Up!';
+    return 'TIME\'S UP!';
+  }
+
+// Helper method to get color based on remaining time
+  Color _getProgressColor() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) return Color(0xFF00E676); // Bright green
+    if (progress > 0.50) return Color(0xFFFFD600); // Bright yellow
+    if (progress > 0.25) return Color(0xFFFF6D00); // Bright orange
+    return Color(0xFFFF1744); // Bright red
+  }
+
+// Helper method for background gradient
+  List<Color> _getBackgroundGradient() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) {
+      return [AppTheme.primaryTeal, Color(0xFF00897B)];
+    } else if (progress > 0.50) {
+      return [Color(0xFF00897B), Color(0xFFF57C00)];
+    } else if (progress > 0.25) {
+      return [Color(0xFFF57C00), Color(0xFFE64A19)];
+    } else {
+      return [Color(0xFFE64A19), Color(0xFFC62828)];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<PickerController>();
 
     return RefreshIndicator(
       onRefresh: controller.refreshData,
@@ -176,7 +276,20 @@ class PickerListTab extends StatelessWidget {
                                     pickerData: pickerData,
                                     index: originalIndex,
                                     isSelected: controller.selectedPickerIndex.value == originalIndex,
-                                    onTap: () => controller.onPickerItemSelect(originalIndex, pickerData),
+                                    onTap: () {
+                                      controller.onPickerItemSelect(originalIndex, pickerData);
+                                      _countdownTimer?.cancel();
+
+                                      // Start countdown after delay if totalTray >= 5
+                                      final totalTrays = int.tryParse(totalTray ?? '0') ?? 0;
+                                      if (totalTrays >= 5) {
+                                        Future.delayed(Duration(milliseconds: 500), () {
+                                          if (mounted) {
+                                            _startCountdown();
+                                          }
+                                        });
+                                      }
+                                    },
                                     isTablet: isTablet,
                                     searchQuery: controller.searchQuery.value, // Pass search query
                                   )
@@ -297,64 +410,38 @@ class PickerListTab extends StatelessWidget {
                                           area: selectedPicker.area!,
                                         );
                                       },
-                                      child: Container(
+                                      child: AnimatedContainer(
+                                        duration: Duration(milliseconds: 500),
                                         padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
                                         decoration: BoxDecoration(
                                           gradient: LinearGradient(
-                                            colors: [AppTheme.primaryTeal, AppTheme.lightTeal],
+                                            colors: _isCountdownActive
+                                                ? _getBackgroundGradient()
+                                                : [AppTheme.primaryTeal, AppTheme.lightTeal],
                                           ),
+                                          boxShadow: _isCountdownActive ? [
+                                            BoxShadow(
+                                              color: _getProgressColor().withOpacity(0.3),
+                                              blurRadius: 8,
+                                              offset: Offset(0, 2),
+                                            ),
+                                          ] : [],
                                         ),
                                         child: Row(
                                           children: [
-                                            const Icon(
-                                              Icons.inventory_2,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
-                                            const SizedBox(width: 8),
                                             Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    'Tray NO: ${selectedPicker.trayNo ?? 'N/A'}',
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.w700,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                  Row(
-                                                    children: [
-                                                      Text(
-                                                        'Items: ${controller.pickerDetails.length}',
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 16),
-                                                      Text(
-                                                        'Selected: ${controller.selectedDetailIds.length}',
-                                                        style: const TextStyle(
-                                                          fontSize: 12,
-                                                          color: Colors.white,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
+                                              child: _isCountdownActive
+                                                  ? _buildCountdownHeader()
+                                                  : _buildNormalHeader(selectedPicker),
                                             ),
                                           ],
-                                        ),
+                                        )
                                       ),
                                     ),
 
                                     // Details List - Grid for tablet, List for mobile
                                     Expanded(
-                                      child:  _buildDetailList(controller),
+                                      child:  _buildDetailList(controller,isTablet),
                                     ),
                                   ],
                                 );
@@ -375,10 +462,272 @@ class PickerListTab extends StatelessWidget {
     );
   }
 
+
+  Widget _buildNormalHeader(PickerData selectedPicker) {
+    return Row(
+      children: [
+        const Icon(
+          Icons.inventory_2,
+          color: Colors.white,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Tray NO: ${selectedPicker.trayNo ?? 'N/A'}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Items: ${controller.pickerDetails.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    'Selected: ${controller.selectedDetailIds.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+
+// Countdown header
+  Widget _buildCountdownHeader() {
+    final progress = _remainingSeconds / _totalSeconds;
+    final progressColor = _getProgressColor();
+    final emoji = _getCountdownEmoji();
+    final urgencyMessage = _getUrgencyMessage();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Top row: Message and Timer
+        Row(
+          mainAxisSize: MainAxisSize.max,
+          children: [
+            // Urgency message with emoji
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 1.0, end: progress > 0.25 ? 1.05 : 1.15),
+              duration: Duration(milliseconds: progress > 0.25 ? 600 : 300),
+              curve: Curves.easeInOut,
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          emoji,
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          urgencyMessage,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              onEnd: () {
+                if (_isCountdownActive && mounted) {
+                  setState(() {});
+                }
+              },
+            ),
+
+            SizedBox(width: 8),
+
+            // Timer with ring
+            SizedBox(
+              width: 28,
+              height: 28,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 1.0, end: 1.4),
+                    duration: Duration(milliseconds: 800),
+                    curve: Curves.easeOut,
+                    builder: (context, scale, child) {
+                      return Transform.scale(
+                        scale: scale,
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: progressColor.withOpacity(0.2 / scale),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    onEnd: () {
+                      if (_isCountdownActive && mounted) {
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.25),
+                      border: Border.all(
+                        color: progressColor,
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$_remainingSeconds',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(width: 8),
+
+            // Animated bars
+            SizedBox(
+              height: 16,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: List.generate(4, (index) {
+                  return TweenAnimationBuilder<double>(
+                    tween: Tween(
+                      begin: 0.4,
+                      end: progress > 0.25 ? 0.7 : 1.0,
+                    ),
+                    duration: Duration(
+                      milliseconds: 300 + (index * 80),
+                    ),
+                    curve: Curves.easeInOut,
+                    builder: (context, height, child) {
+                      return Container(
+                        width: 2,
+                        height: 12 * height,
+                        margin: EdgeInsets.symmetric(horizontal: 1.5),
+                        decoration: BoxDecoration(
+                          color: progressColor.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      );
+                    },
+                    onEnd: () {
+                      if (_isCountdownActive && mounted) {
+                        setState(() {});
+                      }
+                    },
+                  );
+                }),
+              ),
+            ),
+
+            Spacer(),
+
+            // Items info
+            Text(
+              '${controller.pickerDetails.length} items',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 4),
+
+        // Progress bar - Fixed
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 250,
+            height: 4,
+            color: Colors.white.withOpacity(0.2),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                width: 250 * progress,
+                height: 4,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      progressColor,
+                      progressColor.withOpacity(0.7),
+                      progressColor,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
 // Detail List for Mobile
-  Widget _buildDetailList(PickerController controller) {
+  Widget _buildDetailList(PickerController controller, bool isTablet) {
     return ListView.builder(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.only(
+        left: 8,
+        right: 8,
+        top: 8,
+        bottom: 80, // Add extra bottom padding for scroll
+      ),
       itemCount: controller.pickerDetails.length,
       itemBuilder: (context, index) {
         final detail = controller.pickerDetails[index];
@@ -390,57 +739,59 @@ class PickerListTab extends StatelessWidget {
           onTap: controller.showItemStockDetail,
           onFetchStockDetail: controller.fetchStockDetail,
           stockDetailList: controller.stockDetailList,
+          isTablet: isTablet,
         ));
       },
     );
   }
 
 // Detail Grid for Tablet
-  Widget _buildDetailGrid(PickerController controller, double availableWidth) {
-    // Calculate columns based on available width (now 80% of screen)
-    final crossAxisCount = availableWidth >= 1000 ? 3 : 1;
+//   Widget _buildDetailGrid(PickerController controller, double availableWidth) {
+//     // Calculate columns based on available width (now 80% of screen)
+//     final crossAxisCount = availableWidth >= 1000 ? 3 : 1;
+//
+//     // Dynamic spacing
+//     const spacing = 12.0;
+//
+//     // ⭐ KEY SOLUTION: Fixed height for cards
+//     // Adjust this value based on your CompactDetailCard content
+//     final cardHeight = 215.0;  // Set appropriate height for your card design
+//
+//     // Calculate available width per card
+//     const horizontalPadding = 16.0; // 8 * 2
+//     final totalSpacing = spacing * (crossAxisCount - 1);
+//     final cardAvailableWidth = availableWidth - horizontalPadding - totalSpacing;
+//     final cardWidth = cardAvailableWidth / crossAxisCount;
+//
+//     // Calculate aspect ratio dynamically based on actual dimensions
+//     final childAspectRatio = cardWidth / cardHeight;
+//
+//     print("Picker Detail - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
+//
+//     return GridView.builder(
+//       padding: const EdgeInsets.all(8),
+//       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+//         crossAxisCount: crossAxisCount,
+//         crossAxisSpacing: spacing,
+//         mainAxisSpacing: spacing,
+//         childAspectRatio: childAspectRatio,
+//       ),
+//       itemCount: controller.pickerDetails.length,
+//       itemBuilder: (context, index) {
+//         final detail = controller.pickerDetails[index];
+//         return Obx(() => CompactDetailCard(
+//           detail: detail,
+//           index: index,
+//           onSelectionChanged: controller.onDetailSelectionChanged,
+//           isSelected: controller.selectedDetailIds.contains("${detail.itemDetailId.toString()}$index"),
+//           onTap: controller.showItemStockDetail,
+//           onFetchStockDetail: controller.fetchStockDetail,
+//           stockDetailList: controller.stockDetailList,
+//         ));
+//       },
+//     );
+//   }
 
-    // Dynamic spacing
-    const spacing = 12.0;
-
-    // ⭐ KEY SOLUTION: Fixed height for cards
-    // Adjust this value based on your CompactDetailCard content
-    final cardHeight = 215.0;  // Set appropriate height for your card design
-
-    // Calculate available width per card
-    const horizontalPadding = 16.0; // 8 * 2
-    final totalSpacing = spacing * (crossAxisCount - 1);
-    final cardAvailableWidth = availableWidth - horizontalPadding - totalSpacing;
-    final cardWidth = cardAvailableWidth / crossAxisCount;
-
-    // Calculate aspect ratio dynamically based on actual dimensions
-    final childAspectRatio = cardWidth / cardHeight;
-
-    print("Picker Detail - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(8),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: spacing,
-        mainAxisSpacing: spacing,
-        childAspectRatio: childAspectRatio,
-      ),
-      itemCount: controller.pickerDetails.length,
-      itemBuilder: (context, index) {
-        final detail = controller.pickerDetails[index];
-        return Obx(() => CompactDetailCard(
-          detail: detail,
-          index: index,
-          onSelectionChanged: controller.onDetailSelectionChanged,
-          isSelected: controller.selectedDetailIds.contains("${detail.itemDetailId.toString()}$index"),
-          onTap: controller.showItemStockDetail,
-          onFetchStockDetail: controller.fetchStockDetail,
-          stockDetailList: controller.stockDetailList,
-        ));
-      },
-    );
-  }
 }
 
 
@@ -1272,6 +1623,7 @@ class CompactDetailCard extends StatefulWidget {
   final Function(PickerMenuDetail detail)? onRemarkSubmitted;
   final Function(int itemDetailId, String itemName,bool show,String packing)? onFetchStockDetail;
   final List<StockDetailData> stockDetailList; // type depends on your model
+  final bool isTablet;
   const CompactDetailCard({
     Key? key,
     required this.detail,
@@ -1282,6 +1634,7 @@ class CompactDetailCard extends StatefulWidget {
     this.onRemarkSubmitted,
     this.onFetchStockDetail,
     required this.stockDetailList,
+    required this.isTablet
 
   }) : super(key: key);
 
@@ -1529,6 +1882,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         widget.detail.dNick ?? 'N/A',
                         Icons.factory,
                           AppTheme.primaryTeal,
+                        widget.isTablet
+
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1538,7 +1893,9 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
               Icons.batch_prediction,
               (widget.detail.bCount ?? 0) > 1
                   ? Colors.pinkAccent // when bCount > 1
-                  : AppTheme.primaryTeal,     // default color
+                  : AppTheme.primaryTeal,
+                widget.isTablet
+// default color
             ),
           ),
 
@@ -1554,6 +1911,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         widget.detail.sExpDate ?? 'N/A',
                         Icons.schedule,
                         _getExpiryColor(widget.detail.sExpDate),
+                          widget.isTablet
+
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1564,6 +1923,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         (widget.detail.mCount ?? 0) > 1
                             ? Colors.pinkAccent // when bCount > 1
                             : AppTheme.primaryTeal,
+                          widget.isTablet
+
                       ),
                     ),
                   ],
@@ -1579,6 +1940,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         'C: ${widget.detail.caseQ?.toString().replaceAll('.0', '') ?? '0'}',
                         Icons.inventory,
                         AppTheme.primaryTeal,
+                          widget.isTablet
+
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1587,13 +1950,15 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         'L: ${widget.detail.caseL?.toString().replaceAll('.0', '') ?? '0'}',
                         Icons.inventory_2,
                           AppTheme.primaryTeal,
+                          widget.isTablet
+
                       ),
                     ),
                   ],
                 ),
 
                 // Remark Section - Only show if pNote is not empty
-                if (widget.detail.pNote != null && widget.detail.pNote!.isNotEmpty) ...[
+                if (widget.detail.tempRemark != null && widget.detail.tempRemark!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Container(
                     width: double.infinity,
@@ -1629,7 +1994,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          widget.detail.pNote!,
+                          widget.detail.tempRemark,
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppTheme.onSurface,
@@ -1930,7 +2295,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
                                               .where((stock) =>
                                           stock.batchNo != widget.detail.batchNo ||
                                               stock.mrp != widget.detail.mrp)
-                                              .map((stock) => "${stock.batchNo} / ₹${stock.mrp}")
+                                              .map((stock) => "${stock.batchNo} /${stock.mrp}")
                                               .toList();
                                           isLoading = false;
                                         });
@@ -2510,9 +2875,48 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
     }
 
     // Set the pNote in detail and trigger rebuild
-    setState(() {
-      widget.detail.pNote = remarkText;
-    });
+
+    try{
+
+      List<String> parts = reviewText.split('/');
+
+      String batch = parts.isNotEmpty ? parts[0] : '';
+      String mrp = parts.length > 1 ? parts[1] : '';
+
+      if(widget.detail.mrp.toString() == mrp &&
+          widget.detail.batchNo.toString() != batch &&
+          mrp != "" &&
+          batch != ""){
+
+        setState(() {
+          widget.detail.nBatch = batch;
+          widget.detail.tempRemark = "N.B -> ${reviewText}";
+          widget.detail.pNote = '';
+        });
+
+        print("${widget.detail.mrp.toString()} ------------ ${mrp}");
+        print("${widget.detail.batchNo.toString()} ------------ ${batch}");
+
+      }else{
+
+        print("${widget.detail.mrp.toString()} 1------------ ${mrp}");
+        print("${widget.detail.batchNo.toString()} 1------------ ${batch}");
+
+        setState(() {
+          widget.detail.nBatch = '';
+          widget.detail.pNote = remarkText;
+          widget.detail.tempRemark = remarkText;
+        });
+
+      }
+
+    }catch(e){
+      print("ajsdgbfigbuyhzjsdgbfjasc");
+    }
+
+
+
+
 
     // Auto-select the item after submitting review
     // widget.onSelectionChanged(widget.detail.itemDetailId.toString(), true);
@@ -2531,7 +2935,7 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
     );
   }
 
-  Widget _buildCompactInfo(String value, IconData icon, Color color) {
+  Widget _buildCompactInfo(String value, IconData icon, Color color,bool isTablet) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
@@ -2549,8 +2953,8 @@ class _CompactDetailCardState extends State<CompactDetailCard> {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontSize: 11,
+              style: TextStyle(
+                fontSize: isTablet ? 13 : 11,
                 color: AppTheme.onSurface,
                 fontWeight: FontWeight.w600,
               ),
@@ -3245,7 +3649,7 @@ class FloatingSubmitButton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 onTap: controller.isLoadingPickerDetails.value
                     ? null
-                    : () => controller.showSubmitConfirmationDialog(),
+                    : () => controller.submitPicker(),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                   child: Row(

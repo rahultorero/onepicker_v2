@@ -93,7 +93,7 @@ class TrayAssignerScreen extends StatelessWidget {
           Obx(() => Text(
             '${controller.filteredTrayList.length} pending deliveries',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 14,
               color: Colors.white.withOpacity(0.85),
               fontWeight: FontWeight.w400,
               letterSpacing: 0.25,
@@ -452,6 +452,7 @@ class TrayAssignerScreen extends StatelessWidget {
 
   Widget _buildListLayout(TrayAssignerController controller) {
     return ListView.builder(
+      controller: controller.scrollController, // ADD THIS
       padding: const EdgeInsets.all(16),
       itemCount: controller.filteredTrayList.length,
       itemBuilder: (context, index) {
@@ -485,6 +486,7 @@ class TrayAssignerScreen extends StatelessWidget {
         print("Tray - Columns: $crossAxisCount, CardWidth: $cardWidth, CardHeight: $cardHeight, AspectRatio: $childAspectRatio");
 
         return GridView.builder(
+          controller: controller.scrollController, // ADD THIS
           padding: const EdgeInsets.all(16),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
@@ -510,6 +512,7 @@ class TrayAssignerScreen extends StatelessWidget {
     final isOnHold = item.hold ?? false; // Add this line to check hold status
 
     return Container(
+      key: controller.getItemKey(item.sIId ?? 0), // ADD THIS KEY
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1054,13 +1057,19 @@ class TrayAssignerScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: TextField(
+                            child:TextField(
+                              key: ValueKey('tray_input_$itemId'),
                               controller: controller.getTrayController(itemId),
                               focusNode: controller.getTrayFocusNode(itemId),
                               enabled: !isOnHold,
                               textAlign: TextAlign.center,
-                              cursorColor: AppTheme.primaryTeal,
+                              cursorColor: cardColors['primary']!.withOpacity(0.8),
                               keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.next, // Keeps keyboard open
+                              enableInteractiveSelection: true, // ADD THIS - prevents keyboard flicker
+                              showCursor: true, // ADD THIS - ensures cursor stays visible
+                              autocorrect: false, // ADD THIS - prevents keyboard changing
+                              enableSuggestions: false, // ADD THIS - prevents suggestion bar changes
                               inputFormatters: [
                                 FilteringTextInputFormatter.digitsOnly,
                                 LengthLimitingTextInputFormatter(5),
@@ -1079,9 +1088,30 @@ class TrayAssignerScreen extends StatelessWidget {
                                   color: AppTheme.onSurfaceVariant,
                                   fontWeight: FontWeight.w400,
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                                enabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: AppTheme.onSurfaceVariant.withOpacity(0.3), // Light color when not focused
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: cardColors['primary']!.withOpacity(0.8), // Same as cursor - amber/gold rectangle when focused
+                                    width: 2.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                disabledBorder: OutlineInputBorder(
+                                  borderSide: BorderSide(
+                                    color: AppTheme.onSurfaceVariant.withOpacity(0.2),
+                                    width: 1.0,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                               ),
+
                             ),
                           ),
                         ),

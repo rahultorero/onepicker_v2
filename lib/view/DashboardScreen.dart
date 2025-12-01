@@ -46,26 +46,36 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(DashboardController());
 
-    return Scaffold(
-      backgroundColor: AppTheme.background,
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(controller),
-          SliverToBoxAdapter(
-            child: Column(
-              children: [
-                _buildStatsOverview(controller),
-                _buildFilterSection(controller),
-                _buildPaginationControls(controller),
-              ],
+    return RefreshIndicator(
+      onRefresh: () => _handleRefresh(controller),
+      color: Theme.of(context).primaryColor, // Customize color
+      backgroundColor: Colors.white,
+      child: Scaffold(
+        backgroundColor: AppTheme.background,
+        body: CustomScrollView(
+          slivers: [
+            _buildSliverAppBar(controller),
+            SliverToBoxAdapter(
+              child: Column(
+                children: [
+                  _buildStatsOverview(controller),
+                  _buildFilterSection(controller),
+                  _buildPaginationControls(controller),
+                ],
+              ),
             ),
-          ),
-          _buildOrdersSliverList(controller),
-          // REMOVED: The problematic detail view - we'll use bottom sheet instead
-        ],
+            _buildOrdersSliverList(controller),
+            // REMOVED: The problematic detail view - we'll use bottom sheet instead
+          ],
+        ),
       ),
     );
   }
+
+  Future<void> _handleRefresh(DashboardController controller) async {
+    await controller.loadInitialData() ;
+  }
+
 
   void _showDetailBottomSheet(DBStateData item, int index) {
     // Set the selected index for UI feedback

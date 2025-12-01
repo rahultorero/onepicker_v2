@@ -52,6 +52,14 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
   Map<String, FocusNode> qtyFocusNodes = {};
   int batchNo = 0;
   bool isLoadingBatchNo = true;
+  String totalTray = '0';
+
+  Timer? _countdownTimer;
+  int _remainingSeconds = 0;
+  int _totalSeconds = 0;
+  bool _isCountdownActive = false;
+  double _pulseScale = 1.0;
+
 
 
   @override
@@ -60,10 +68,13 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     ever(controller.packerDetails, (_) {
       _initializeData();
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      searchFocusNode.requestFocus();
+    });
     _initializeData();
     _setupSearch();
     _loadBatchNo(); // Add this
-
+    _startCountdown();
   }
 
   Future<void> _loadBatchNo() async {
@@ -77,6 +88,32 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
       setState(() {
         isLoadingBatchNo = false;
         batchNo = 0; // default value on error
+      });
+    }
+  }
+
+  Future<void> _startCountdown() async {
+    totalTray = await ApiConfig.getSsub('CheckingTime');
+    Get.log("checking time $totalTray");
+
+    final totalTrays = int.tryParse(totalTray ?? '0') ?? 0;
+    if (totalTrays > 0 && controller.packerDetails.isNotEmpty) {
+      final totalItems = controller.packerDetails.length;
+      final completedItems = checkedItems.length;
+      final itemsCount = totalItems - completedItems;
+      _totalSeconds = itemsCount * 10; // 5 seconds per item
+      _remainingSeconds = _totalSeconds;
+      _isCountdownActive = true;
+
+      _countdownTimer = Timer.periodic(Duration(seconds: 1), (timer) {
+        setState(() {
+          if (_remainingSeconds > 0) {
+            _remainingSeconds--;
+          } else {
+
+            timer.cancel();
+          }
+        });
       });
     }
   }
@@ -188,6 +225,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
       // Show success feedback BEFORE setState
       _showSuccessMessage(item.itemName ?? 'Item');
       searchController.clear();
+      searchFocusNode.requestFocus();
 
       // Delay the setState to give user time to see the feedback
       Future.delayed(const Duration(milliseconds: 800), () {
@@ -258,72 +296,115 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
   void _showSuccessMessage(String itemName) {
     HapticFeedback.mediumImpact();
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_circle,
-                color: Colors.white,
-                size: 20,
-              ),
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade600,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Quantity Verified ✓',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
                   ),
-                  Text(
-                    itemName,
-                    style: const TextStyle(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: const Icon(
+                    Icons.check_circle,
+                    color: Colors.white,
+                    size: 20,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Quantity Verified ✓',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        itemName,
+                        style: const TextStyle(fontSize: 12, color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        backgroundColor: Colors.green.shade600,
-        duration: const Duration(milliseconds: 1500),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
+
+    overlay.insert(overlayEntry);
+
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      overlayEntry.remove();
+    });
   }
 
   void _showCorrectQtyMessage(String correctQty) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Correct QTY is: $correctQty'),
-        backgroundColor: Colors.red.shade400,
-        duration: const Duration(milliseconds: 800),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    final overlay = Overlay.of(context);
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: MediaQuery.of(context).padding.top + 16,
+        left: 16,
+        right: 16,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.shade400,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Text(
+              'Correct QTY is: $correctQty',
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ),
       ),
     );
-  }
 
+    overlay.insert(overlayEntry);
+
+    Future.delayed(const Duration(milliseconds: 800), () {
+      overlayEntry.remove();
+    });
+  }
 
 
   Color _getCardColor(PickerMenuDetail item) {
@@ -347,40 +428,39 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     scrollController.dispose();
     qtyControllers.values.forEach((controller) => controller.dispose());
     qtyFocusNodes.values.forEach((focusNode) => focusNode.dispose());
+    _countdownTimer?.cancel();
+
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        // Check if there are any checked items (unsaved changes)
-        if (checkedItems.isNotEmpty) {
-          final shouldSave = await _showExitDialog();
+        onWillPop: () async {
+          // Check if there are any checked items (unsaved changes)
+          if (checkedItems.isNotEmpty) {
+            final shouldSave = await _showExitDialog();
 
-          // If dialog returns null (shouldn't happen now), stay on screen
-          if (shouldSave == null) {
-            return false;
-          }
-
-          if (shouldSave) {
-            // User chose to save
-            if (checkedItems.length == controller.packerDetails.length) {
-              _showTrayManagementDialog();
-              return false; // Don't pop yet, wait for tray dialog
+            if (shouldSave!) {
+              // Save changes before going back
+              if (checkedItems.length == controller.packerDetails.length) {
+                _showTrayManagementDialog();
+                return false; // Don't pop yet, wait for tray dialog
+              } else {
+                await controller.submitCheckedItems(widget.pickerData, checkedItems);
+                // After saving, manually navigate back
+                Get.back();
+                return false; // Prevent WillPopScope from also popping
+              }
             } else {
-              await controller.submitCheckedItems(widget.pickerData, checkedItems);
-              return true; // Allow pop after saving
+              // Discard changes and go back
+              return true;
             }
           } else {
-            // User chose to discard
-            return true; // Allow pop
+            // No changes, go back directly
+            return true;
           }
-        } else {
-          // No changes, go back directly
-          return true;
-        }
-      },
+        },
       child: Scaffold(
         backgroundColor: Colors.grey.shade50,
         appBar: _buildAppBar(),
@@ -399,85 +479,407 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     );
   }
 
+  // Helper method to get emoji based on remaining time
+  String _getCountdownEmoji() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) return '⚡';
+    if (progress > 0.50) return '🔥';
+    if (progress > 0.25) return '⏰';
+    return '🚨';
+  }
+
+  String _getUrgencyMessage() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) return 'Work Fast!';
+    if (progress > 0.50) return 'Speed Up!';
+    if (progress > 0.25) return 'Hurry Up!';
+    return 'TIME\'S UP!';
+  }
+
+// Helper method to get color based on remaining time
+  Color _getProgressColor() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) return Color(0xFF00E676); // Bright green
+    if (progress > 0.50) return Color(0xFFFFD600); // Bright yellow
+    if (progress > 0.25) return Color(0xFFFF6D00); // Bright orange
+    return Color(0xFFFF1744); // Bright red
+  }
+
+  List<Color> _getBackgroundGradient() {
+    final progress = _remainingSeconds / _totalSeconds;
+    if (progress > 0.75) {
+      return [AppTheme.primaryTeal, Color(0xFF00897B)];
+    } else if (progress > 0.50) {
+      return [Color(0xFF00897B), Color(0xFFF57C00)];
+    } else if (progress > 0.25) {
+      return [Color(0xFFF57C00), Color(0xFFE64A19)];
+    } else {
+      return [Color(0xFFE64A19), Color(0xFFC62828)];
+    }
+  }
+
   PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: AppTheme.primaryTeal,
-      elevation: 3,
-      systemOverlayStyle: SystemUiOverlayStyle.light,
-      leading: IconButton(
-        icon: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(8),
+    return PreferredSize(
+      preferredSize: Size.fromHeight(_isCountdownActive ? 90 : 56),
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 500),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: _isCountdownActive
+                ? _getBackgroundGradient()
+                : [AppTheme.primaryTeal, AppTheme.primaryTeal],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          child: Icon(
-            Icons.arrow_back_ios_new,
-            color: Colors.white,
-            size: 16,
-          ),
+          boxShadow: [
+            BoxShadow(
+              color: _isCountdownActive
+                  ? _getProgressColor().withOpacity(0.3)
+                  : Colors.black26,
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
-        onPressed: () async {
-          // Check if there are any checked items (unsaved changes)
-          if (checkedItems.isNotEmpty) {
-            final shouldSave = await _showExitDialog();
-            if (shouldSave!) {
-              // Save changes before going back
-              if (checkedItems.length == controller.packerDetails.length) {
-                _showTrayManagementDialog();
+        child: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          systemOverlayStyle: SystemUiOverlayStyle.light,
+          toolbarHeight: _isCountdownActive ? 90 : 56,
+          leading: IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.arrow_back_ios_new,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+            onPressed: () async {
+              // Check if there are any checked items (unsaved changes)
+              if (checkedItems.isNotEmpty) {
+                final shouldSave = await _showExitDialog();
+                if (shouldSave!) {
+                  // Save changes before going back
+                  if (checkedItems.length == controller.packerDetails.length) {
+                    _showTrayManagementDialog();
+                  } else {
+                    await controller.submitCheckedItems(widget.pickerData, checkedItems);
+                    Get.back();
+                  }
+                } else {
+                  // Discard changes and go back
+                  Get.back();
+                }
               } else {
-                await controller.submitCheckedItems(widget.pickerData, checkedItems);
+                // No changes, go back directly
                 Get.back();
               }
-            } else {
-              // Discard changes and go back
-              Get.back();
-            }
-          } else {
-            // No changes, go back directly
-            Get.back();
-          }
-        },
-      ),
-      // ... rest of your AppBar code remains the same
-      title: Text(
-        'Quality Check',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 19,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.2,
+            },
+          ),
+          title: _isCountdownActive ? _buildCountdownWidget() : _buildNormalTitle(),
+          centerTitle: true,
+          actions: [
+            Container(
+              margin: const EdgeInsets.only(right: 14, top: 8, bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.2)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                  SizedBox(width: 4),
+                  Text(
+                    '${HomeScreenController.selectCamera}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      centerTitle: true,
-      actions: [
+    );
+  }
+
+  Widget _buildNormalTitle() {
+    return Text(
+      'Quality Check',
+      style: TextStyle(
+        color: Colors.white,
+        fontSize: 19,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.2,
+      ),
+    );
+  }
+
+
+  Widget _buildCountdownWidget() {
+    final progress = _remainingSeconds / _totalSeconds;
+    final progressColor = _getProgressColor();
+    final emoji = _getCountdownEmoji();
+    final urgencyMessage = _getUrgencyMessage();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Top row: Message, Timer, and Bars
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Left side: Urgency message with emoji
+            TweenAnimationBuilder<double>(
+              tween: Tween(begin: 1.0, end: progress > 0.25 ? 1.05 : 1.15),
+              duration: Duration(milliseconds: progress > 0.25 ? 600 : 300),
+              curve: Curves.easeInOut,
+              builder: (context, scale, child) {
+                return Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.4),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: progressColor.withOpacity(0.3),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          emoji,
+                          style: TextStyle(fontSize: 14),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          urgencyMessage,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+              onEnd: () {
+                if (_isCountdownActive) {
+                  setState(() {});
+                }
+              },
+            ),
+
+            SizedBox(width: 8),
+
+            // Center: Timer with animated rings
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                // Outer pulsing ring
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 1.0, end: 1.4),
+                  duration: Duration(milliseconds: 800),
+                  curve: Curves.easeOut,
+                  builder: (context, scale, child) {
+                    return Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: progressColor.withOpacity(0.2 / scale),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                  onEnd: () {
+                    if (_isCountdownActive) {
+                      setState(() {});
+                    }
+                  },
+                ),
+                // Timer container
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.25),
+                    border: Border.all(
+                      color: progressColor,
+                      width: 2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: progressColor.withOpacity(0.5),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$_remainingSeconds',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(width: 8),
+
+            // Right side: Animated bars
+            Row(
+              children: List.generate(4, (index) {
+                return TweenAnimationBuilder<double>(
+                  tween: Tween(
+                    begin: 0.4,
+                    end: progress > 0.25 ? 0.7 : 1.0,
+                  ),
+                  duration: Duration(
+                    milliseconds: 300 + (index * 80),
+                  ),
+                  curve: Curves.easeInOut,
+                  builder: (context, height, child) {
+                    return Container(
+                      width: 2.5,
+                      height: 16 * height,
+                      margin: EdgeInsets.symmetric(horizontal: 1.5),
+                      decoration: BoxDecoration(
+                        color: progressColor.withOpacity(0.9),
+                        borderRadius: BorderRadius.circular(2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: progressColor.withOpacity(0.3),
+                            blurRadius: 3,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  onEnd: () {
+                    if (_isCountdownActive) {
+                      setState(() {});
+                    }
+                  },
+                );
+              }),
+            ),
+          ],
+        ),
+
+        SizedBox(height: 8),
+
+        // Bottom: Large progress bar
         Container(
-          margin: const EdgeInsets.only(right: 14, top: 8, bottom: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          width: 200,
+          height: 6,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Stack(
             children: [
-              Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
-              SizedBox(width: 4),
-              Text(
-                '${HomeScreenController.selectCamera}',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+              // Segmented background
+              Row(
+                children: List.generate(20, (index) {
+                  return Expanded(
+                    child: Container(
+                      margin: EdgeInsets.symmetric(horizontal: 0.5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              // Animated progress with gradient
+              AnimatedContainer(
+                duration: Duration(seconds: 1),
+                curve: Curves.linear,
+                width: 200 * progress,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      progressColor,
+                      progressColor.withOpacity(0.7),
+                      progressColor,
+                    ],
+                    stops: [0.0, 0.5, 1.0],
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: progressColor.withOpacity(0.6),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
               ),
+              // Moving highlight
+              if (progress > 0.1)
+                AnimatedPositioned(
+                  duration: Duration(seconds: 1),
+                  left: (200 * progress) - 30,
+                  child: Container(
+                    width: 30,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          Colors.white.withOpacity(0.6),
+                          Colors.transparent,
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
       ],
     );
   }
+
   Future<bool?> _showExitDialog() async {
     return await showDialog<bool>(
       context: context,
@@ -625,8 +1027,9 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
       },
     );
   }
+
+
   Widget _buildHeader() {
-    final showAllTrays = false.obs;
 
     return Obx(() {
       final totalItems = controller.packerDetails.length;
@@ -667,7 +1070,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                   GestureDetector(
                     onTap: () {
                       if (trayNumbers.length > 1) {
-                        showAllTrays.value = !showAllTrays.value;
+                        controller.showAllTrays.toggle();
                       }
                     },
                     child: Container(
@@ -698,24 +1101,34 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (trayNumbers.length > 1 && !showAllTrays.value) ...[
-                            SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.25),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                "+${trayNumbers.length - 1}",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ]
+                          // Only wrap the reactive part in Obx
+                          if (trayNumbers.length > 1)
+                            Obx(() {
+                              if (!controller.showAllTrays.value) {
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.25),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        "+${trayNumbers.length - 1}",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }
+                              return SizedBox.shrink(); // Return empty when showAllTrays is true
+                            }),
                         ],
                       ),
                     ),
@@ -807,7 +1220,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
               ),
 
               // Expanded Tray List
-              if (showAllTrays.value && trayNumbers.length > 1) ...[
+              if (controller.showAllTrays.value && trayNumbers.length > 1) ...[
                 SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(10),
@@ -974,6 +1387,12 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
 
   void _showRemarkDialog(BuildContext context, PickerMenuDetail item, String? selectedRemark) {
     String? selectedRemark = item.pNote; // Store currently selected remark
+    String? selectedBatch;
+    bool showBatchList = false;
+    bool isLoading = false;
+    List<String> batchNumbers = [];
+    TextEditingController reviewController = TextEditingController();
+
 
     showDialog(
       context: context,
@@ -1002,96 +1421,194 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                   ),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Choose a remark:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Predefined options
-                  _buildRemarkOption(
-                    'Shortage in Quantity Received',
-                    selectedRemark,
-                        (value) {
-                      setDialogState(() {
-                        selectedRemark = value;
-                      });
-                    },
-                  ),
-                  _buildRemarkOption(
-                    'Excess Quantity Received',
-                    selectedRemark,
-                        (value) {
-                      setDialogState(() {
-                        selectedRemark = value;
-                      });
-                    },
-                  ),
-                  _buildRemarkOption(
-                    'Incorrect Batch Received',
-                    selectedRemark,
-                        (value) {
-                      setDialogState(() {
-                        selectedRemark = value;
-                      });
-                    },
-                  ),
-                  _buildRemarkOption(
-                    'Incorrect Product Received',
-                    selectedRemark,
-                        (value) {
-                      setDialogState(() {
-                        selectedRemark = value;
-                      });
-                    },
-                  ),
-                  _buildRemarkOption(
-                    'Product Not Picked',
-                    selectedRemark,
-                        (value) {
-                      setDialogState(() {
-                        selectedRemark = value;
-                      });
-                    },
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Display selected remark
-                  const Text(
-                    'Selected Remark:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: AppTheme.primaryTeal.withOpacity(0.3),
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[50],
-                    ),
-                    child: Text(
-                      selectedRemark ?? 'No remark selected',
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Choose a remark:',
                       style: TextStyle(
                         fontSize: 14,
-                        color: selectedRemark != null ? Colors.black : Colors.grey,
+                        color: Colors.grey,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+
+                    // Batch Change Option with nested batch list
+                    _buildRemarkOption(
+                      'Batch Change',
+                      selectedRemark,
+                          (value) async {
+                        setDialogState(() {
+                          selectedRemark = value;
+                          showBatchList = true;
+                          isLoading = true;
+                        });
+
+                        // Call the API to fetch stock details
+                        // if (widget.onFetchStockDetail != null) {
+                        await pController.fetchStockDetail(
+                          item.itemDetailId ?? 0,
+                          item.itemName ?? '',
+                          false,
+                          item.packing ?? '',
+                        );
+
+                        // After API call, update the local batchNumbers list
+                        setDialogState(() {
+                          batchNumbers = pController.stockDetailList
+                              .where((stock) =>
+                          stock.batchNo != item.batchNo &&
+                              stock.mrp == item.mrp)
+                              .map((stock) => "${stock.batchNo} /${stock.mrp}")
+                              .toList();
+                          isLoading = false;
+                        });
+
+                        print("🔵 Updated batchNumbers in dialog: $batchNumbers");
+                        // } else {
+                        //   setDialogState(() {
+                        //     isLoading = false;
+                        //   });
+                        // }
+                      },
+                    ),
+
+                    if (showBatchList && selectedRemark == 'Batch Change')
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                        child: isLoading
+                            ? Container(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              CircularProgressIndicator(
+                                color: AppTheme.primaryTeal,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Loading batch data...',
+                                style: TextStyle(
+                                  color: AppTheme.onSurface.withOpacity(0.6),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                            : _buildBatchList(
+                          batchNumbers,
+                          selectedBatch,
+                          setDialogState,
+                          reviewController,
+                              (value) => setDialogState(() => selectedBatch = value),
+                        ),
+                      ),
+
+                    // Predefined options
+                    _buildRemarkOption(
+                      'Shortage in Quantity Received',
+                      selectedRemark,
+                          (value) {
+                        setDialogState(() {
+                          selectedRemark = value;
+                          showBatchList = false;
+                        });
+                      },
+                    ),
+                    _buildRemarkOption(
+                      'Excess Quantity Received',
+                      selectedRemark,
+                          (value) {
+                        setDialogState(() {
+                          selectedRemark = value;
+                          showBatchList = false;
+                        });
+                      },
+                    ),
+
+
+
+                    _buildRemarkOption(
+                      'Incorrect Product Received',
+                      selectedRemark,
+                          (value) {
+                        setDialogState(() {
+                          selectedRemark = value;
+                          showBatchList = false;
+                        });
+                      },
+                    ),
+                    _buildRemarkOption(
+                      'Incorrect Batch Received',
+                      selectedRemark,
+                          (value) {
+                        setDialogState(() {
+                          selectedRemark = value;
+                          showBatchList = false;
+                        });
+                      },
+                    ),
+                    _buildRemarkOption(
+                      'Product Not Picked',
+                      selectedRemark,
+                          (value) {
+                        setDialogState(() {
+                          selectedRemark = value;
+                          showBatchList = false;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Display selected remark
+                    const Text(
+                      'Selected Remark:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppTheme.primaryTeal.withOpacity(0.3),
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[50],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            selectedRemark ?? 'No remark selected',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: selectedRemark != null ? Colors.black : Colors.grey,
+                            ),
+                          ),
+                          if (selectedBatch != null && selectedRemark == 'Incorrect Batch Received')
+                            Padding(
+                              padding: const EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Selected Batch: $selectedBatch',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.primaryTeal,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 // Clear Button
@@ -1211,8 +1728,40 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                     Navigator.of(context).pop();
 
                     setState(() {
-                      item.pNote = selectedRemark;
+                      // Save remark with batch info if applicable
+                      if (selectedRemark == 'Batch Change' && selectedBatch != null) {
+                        List<String>? parts = selectedBatch?.split('/');
+
+                        String batch = parts!.isNotEmpty ? parts[0] : '';
+                        String mrp = parts.length > 1 ? parts[1] : '';
+
+                        if (item.mrp.toString() == mrp &&
+                            item.batchNo.toString() != batch &&
+                            mrp != "" &&
+                            batch != "") {
+                          setState(() {
+                            item.nBatch = batch;
+                            item.tempRemark = "N.B -> ${batch}/${mrp}";
+                            item.pNote = '';
+                          });
+
+                          print("${item.mrp.toString()} ------------ ${mrp}");
+                          print("${item.batchNo.toString()} ------------ ${batch}");
+                        } else {
+                          setState(() {
+                            item.pNote = selectedRemark;
+                            item.tempRemark = selectedRemark!;
+                          });
+
+                        }
+                      }else{
+                        setState(() {
+                          item.pNote = selectedRemark;
+                          item.tempRemark = selectedRemark!;
+                        });
+                      }
                     });
+
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -1253,11 +1802,114 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
     );
   }
 
+
+  Widget _buildBatchList(List<String> batchNumbers, String? selectedBatch,
+      Function setState, TextEditingController controller, Function(String?) onBatchSelected) {
+    if (batchNumbers.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.lightTeal.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.lightTeal.withOpacity(0.3),
+          ),
+        ),
+        child: Text(
+          'No batch data available',
+          style: TextStyle(
+            fontSize: 12,
+            color: AppTheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.lightTeal.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppTheme.lightTeal.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.list_alt,
+                size: 16,
+                color: AppTheme.primaryTeal,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Available Batches:',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primaryTeal,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...batchNumbers.asMap().entries.map((entry) {
+            final index = entry.key;
+            final batch = entry.value;
+            final uniqueValue = '$batch';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              decoration: BoxDecoration(
+                color: selectedBatch == uniqueValue
+                    ? AppTheme.primaryTeal.withOpacity(0.1)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: selectedBatch == uniqueValue
+                      ? AppTheme.primaryTeal
+                      : AppTheme.primaryTeal.withOpacity(0.2),
+                ),
+              ),
+              child: RadioListTile<String>(
+                title: Text(
+                  batch,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selectedBatch == uniqueValue ? FontWeight.w600 : FontWeight.w500,
+                    color: selectedBatch == uniqueValue ? AppTheme.primaryTeal : AppTheme.onSurface,
+                  ),
+                ),
+                value: uniqueValue,
+                groupValue: selectedBatch,
+                onChanged: (value) {
+                  // ✅ Call onBatchSelected with the unique value
+                  print("----------- $value");
+                  print("----------- $selectedBatch");
+                  onBatchSelected(value);
+                  controller.text = batch;
+                },
+                dense: true,
+                activeColor: AppTheme.primaryTeal,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
   void _showReviewRemarkDialog(BuildContext context, PickerMenuDetail item) {
     TextEditingController remarkController = TextEditingController();
 
     // Pre-fill with existing note
-    remarkController.text = item.pNote ?? '';
+    remarkController.text = item.tempRemark ?? '';
 
     showDialog(
       context: context,
@@ -1668,7 +2320,9 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                       const SizedBox(height: 8),
 
 
-                      if (item.pNote != null && item.pNote!.isNotEmpty) ...[
+                      if ((item.tempRemark != null && item.tempRemark!.isNotEmpty) ||
+                          (item.pNote != null && item.pNote!.isNotEmpty)) ...
+                      [
                         GestureDetector(
                           onTap: () => _showReviewRemarkDialog(context, item),
                           child: Container(
@@ -1688,7 +2342,9 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    item.pNote!,
+                                    (item.tempRemark != null && item.tempRemark!.isNotEmpty)
+                                        ? item.tempRemark!
+                                        : (item.pNote ?? ''),
                                     style: const TextStyle(
                                       fontSize: 11,
                                       color: AppTheme.onSurface,
@@ -1879,9 +2535,15 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
         child: Obx(() => ElevatedButton(
           onPressed: controller.isSubmittingData.value
               ? null
-              : () {
+              : () async {
             if(checkedItems.length == controller.packerDetails.length){
-              _showTrayManagementDialog();
+              final checkerTray = await ApiConfig.getSyn('NewTrayForPacker');
+              if (checkerTray == 0){
+                controller.submitCheckedAllItems(widget.pickerData, checkedItems);
+                searchController.clear();
+              }else{
+                _showTrayManagementDialog();
+              }
             }else{
               controller.submitCheckedItems(widget.pickerData, checkedItems);
               searchController.clear();
@@ -1922,6 +2584,7 @@ class _CheckerDetailScreenState extends State<CheckerDetailScreen>
       ),
     );
   }
+
 
 
   void _showTrayManagementDialog() {
@@ -1984,7 +2647,7 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
       }
     });
   }
-
+  
   @override
   void dispose() {
     _trayController.dispose();
@@ -1992,6 +2655,7 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
     _scrollController.dispose();
     super.dispose();
   }
+
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
@@ -2083,8 +2747,8 @@ class _TrayManagementDialogState extends State<TrayManagementDialog> {
     final controller = Get.find<CheckerController>();
     Navigator.of(context).pop();
 
-    controller.submitCheckedAllItems(widget.pickerData, widget.checkedItems);
-    Get.back();
+    // controller.submitCheckedAllItems(widget.pickerData, widget.checkedItems);
+    // Get.back();
   }
 
   Future<void> _submitTrays() async {

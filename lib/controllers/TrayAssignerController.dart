@@ -36,10 +36,17 @@ class TrayAssignerController extends GetxController {
 
   // Filter types
   final filterTypes = ['ALL', 'CITY', 'AREA', 'SMAN', 'ROUTE'];
-
+  var nextItemIdForScanner = Rxn<int>(); // Nullable Rx for next item ID
   // Individual tray number controllers for each item
   var trayNumberControllers = <int, TextEditingController>{}.obs;
   var trayFocusNodes = <int, FocusNode>{}.obs;
+
+  // ADD THIS: ScrollController to maintain scroll position
+  ScrollController scrollController = ScrollController();
+
+  // ADD THIS: Map to track item positions for scrolling
+  var itemKeys = <int, GlobalKey>{}.obs;
+
 
   // API parameters
   int companyId = 1;
@@ -89,8 +96,17 @@ class TrayAssignerController extends GetxController {
     for (var focusNode in trayFocusNodes.values) {
       focusNode.dispose();
     }
+    scrollController.dispose(); // ADD THIS
     mobileScannerController?.dispose();
     super.onClose();
+  }
+
+  // Add this method to get GlobalKey for each item
+  GlobalKey getItemKey(int itemId) {
+    if (!itemKeys.containsKey(itemId)) {
+      itemKeys[itemId] = GlobalKey();
+    }
+    return itemKeys[itemId]!;
   }
 
   void loadGlobalScanList() async {
@@ -201,6 +217,9 @@ class TrayAssignerController extends GetxController {
               print("⚠️ Skipped Tray Item with null sIId");
             }
           }
+
+          focusFirstAvailableItem();
+
         } else {
           print("❌ Tray Response Failed: message=${trayResponse.message}");
           Get.snackbar('Error', trayResponse.message ?? 'Failed to load tray list');
@@ -270,6 +289,118 @@ class TrayAssignerController extends GetxController {
     }
   }
 
+  void _logKeyboardState(String location) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final keyboardVisible = MediaQuery.of(Get.context!).viewInsets.bottom > 0;
+      print("⌨️ [$location] Keyboard visible: $keyboardVisible");
+    });
+  }
+
+
+  void _scrollToItemAndFocus(TrayAssignerData item, int itemIndex) {
+    final itemId = item.sIId ?? 0;
+
+    print("📜 ========== START _scrollToItemAndFocus ==========");
+    print("📜 Item index: $itemIndex, itemId: $itemId");
+
+    // STEP 1: Focus FIRST (before any scrolling)
+    final nextFocusNode = getTrayFocusNode(itemId);
+    print("🔍 Requesting focus for $itemId BEFORE scroll");
+
+    nextFocusNode.requestFocus();
+
+    // Give focus a moment to take effect
+    Future.delayed(const Duration(milliseconds: 100), () {
+      print("✅ Focus should be set, now scrolling...");
+      _logKeyboardState("After focus, before scroll");
+
+      // STEP 2: Now scroll (keyboard should stay open because field has focus)
+      if (scrollController.hasClients) {
+        final screenWidth = Get.width;
+        final crossAxisCount = screenWidth > 900 ? 3 : (screenWidth > 600 ? 2 : 1);
+        final rowIndex = (itemIndex / crossAxisCount).floor();
+
+        const double estimatedItemHeight = 200.0;
+        const double spacing = 16.0;
+
+        final double targetScrollPosition = (rowIndex * (estimatedItemHeight + spacing)) + 16;
+        final maxScroll = scrollController.position.maxScrollExtent;
+        final targetPosition = targetScrollPosition.clamp(0.0, maxScroll);
+
+        print("📍 Scrolling to position: $targetPosition (row: $rowIndex)");
+
+        // Use jumpTo instead of animateTo to avoid keyboard closing
+        scrollController.jumpTo(targetPosition);
+
+        print("📍 Scroll completed (instant jump)");
+        _logKeyboardState("After scroll complete");
+      }
+    });
+
+    print("📜 ========== END _scrollToItemAndFocus ==========");
+  }
+
+
+  // Add this method to focus first non-hold item
+// Add this method to focus first non-hold item WITH SCROLLING
+  void focusFirstAvailableItem() {
+    print("🎯 Attempting to focus first available item...");
+
+    // Find first non-hold item
+    TrayAssignerData? firstAvailable;
+    int firstAvailableIndex = -1;
+
+    for (int i = 0; i < filteredTrayList.length; i++) {
+      final item = filteredTrayList[i];
+      final isOnHold = item.hold ?? false;
+      if (!isOnHold) {
+        firstAvailable = item;
+        firstAvailableIndex = i;
+        print("✅ Found first available item: ${item.invNo} (${item.sIId}) at index $i");
+        break;
+      }
+    }
+
+    // Focus and scroll to it if found
+    if (firstAvailable != null && firstAvailableIndex >= 0) {
+      final itemId = firstAvailable.sIId ?? 0;
+
+      // Delay to ensure UI is fully built
+      Future.delayed(const Duration(milliseconds: 500), () {
+        // Focus first
+        final focusNode = getTrayFocusNode(itemId);
+        if (focusNode.canRequestFocus) {
+          focusNode.requestFocus();
+          print("✅ Focused first available item: $itemId");
+
+          // Then scroll to it
+          if (scrollController.hasClients) {
+            final screenWidth = Get.width;
+            final crossAxisCount = screenWidth > 900 ? 3 : (screenWidth > 600 ? 2 : 1);
+            final rowIndex = (firstAvailableIndex / crossAxisCount).floor();
+
+            const double estimatedItemHeight = 200.0;
+            const double spacing = 16.0;
+
+            final double targetScrollPosition = (rowIndex * (estimatedItemHeight + spacing)) + 16;
+            final maxScroll = scrollController.position.maxScrollExtent;
+            final targetPosition = targetScrollPosition.clamp(0.0, maxScroll);
+
+            print("📍 Scrolling to first item position: $targetPosition (row: $rowIndex)");
+
+            // Instant scroll to avoid keyboard issues
+            scrollController.jumpTo(targetPosition);
+
+            print("📍 Scrolled to first available item");
+          }
+        } else {
+          print("❌ Cannot focus first item: $itemId");
+        }
+      });
+    } else {
+      print("⚠️ No available items to focus (all on hold)");
+    }
+  }
   // Search with selected filter from API
   Future<void> searchWithFilter() async {
     if (selectedFilterType.value == 'ALL') {
@@ -329,6 +460,9 @@ class TrayAssignerController extends GetxController {
               getTrayController(item.sIId!);
             }
           }
+
+          focusFirstAvailableItem();
+
         } else {
           Get.snackbar('Error', trayResponse.message ?? 'No results found');
         }
@@ -511,8 +645,10 @@ class TrayAssignerController extends GetxController {
       addTrayNumber(itemId, value);
       getTrayController(itemId).clear();
     }
+
   }
 
+  // Handle tray number submission
   // Handle tray number submission
   void onTrayNumberSubmitted(TrayAssignerData item, String value) {
     final itemId = item.sIId ?? 0;
@@ -521,10 +657,15 @@ class TrayAssignerController extends GetxController {
     if (formattedValue.isNotEmpty) {
       addTrayNumber(itemId, formattedValue);
       getTrayController(itemId).clear();
+
+      // IMPORTANT: Don't let focus move yet if in single tray mode
+      // The controller will handle it after API completes
     }
   }
 
   // Add tray number with validation
+// Add tray number with validation
+// Add tray number with validation
   void addTrayNumber(int itemId, String trayNumber) {
 
     _initializeTrayNumbers(itemId);
@@ -555,7 +696,6 @@ class TrayAssignerController extends GetxController {
       return;
     }
 
-
     // Add to current item's tray list
     trayList.add(trayNumber);
 
@@ -574,43 +714,136 @@ class TrayAssignerController extends GetxController {
 
     // FIXED: Check for single tray mode (0), auto-submit immediately
     if (multiTraySetting.value == 0) {
+      // REMOVED: Don't unfocus - keep keyboard open
+      // final currentFocusNode = getTrayFocusNode(itemId);
+      // if (currentFocusNode.hasFocus) {
+      //   currentFocusNode.unfocus();
+      // }
+
       final item = filteredTrayList.firstWhere((element) => element.sIId == itemId);
-      _autoSubmitSingleTray(item);
+
+      // Shorter delay since we're not waiting for keyboard
+      Future.delayed(const Duration(milliseconds: 50), () {
+        _autoSubmitSingleTray(item);
+      });
     }
   }
 
+
   void _autoSubmitSingleTray(TrayAssignerData item) async {
+    print("🎯 ========== START _autoSubmitSingleTray ==========");
     final itemId = item.sIId ?? 0;
     final trayList = getTrayNumbers(itemId);
 
+    _logKeyboardState("Start of _autoSubmitSingleTray");
+
     if (trayList.isNotEmpty) {
-      // Store next item reference BEFORE API call
+      // Store current index BEFORE API call
       final currentIndex = filteredTrayList.indexWhere((e) => e.sIId == itemId);
-      final nextItem = (currentIndex >= 0 && currentIndex < filteredTrayList.length - 1)
-          ? filteredTrayList[currentIndex + 1]
-          : null;
+
+      print("🔍 Current item index: $currentIndex, itemId: $itemId, invNo: ${item.invNo}");
+
+      // Store the sIId of the next non-hold item BEFORE API removes current item
+      int? nextItemId;
+      int nextItemIndex = -1;
+      for (int i = currentIndex + 1; i < filteredTrayList.length; i++) {
+        final candidate = filteredTrayList[i];
+        final isOnHold = candidate.hold ?? false;
+
+        if (!isOnHold) {
+          nextItemId = candidate.sIId;
+          nextItemIndex = i;
+          print("✅ Found next item at index $i: itemId=${candidate.sIId}, invNo=${candidate.invNo}");
+          break;
+        } else {
+          print("⏭️ Skipping on-hold item at index $i: itemId=${candidate.sIId}, invNo=${candidate.invNo}");
+        }
+      }
+
+      nextItemIdForScanner.value = nextItemId;
+      print("📝 Stored nextItemId for scanner: $nextItemId");
 
       final trayListString = trayList.join(',');
-      // Call the API and get whether it was the last item
+      print("📤 Calling API to assign tray for item: $itemId");
+
+      _logKeyboardState("Before postAssignTray call");
+
+      // Call the API (this will remove current item from list)
       final isLastItem = await postAssignTray(item, trayListString, trayList.length);
 
-// Small delay to ensure UI has processed the update
-      await Future.delayed(const Duration(milliseconds: 100));
+      print("✅ API completed. List size now: ${filteredTrayList.length}");
+      _logKeyboardState("After postAssignTray completed");
 
-      if (nextItem != null && filteredTrayList.isNotEmpty) {
-        // There are more items, focus on the next one
-        _focusSpecificItem(nextItem);
-      } else {
-        // This was the last item
-        if (isLastItem) {
-          // Wait 2 seconds so user can see the success message
-          await Future.delayed(const Duration(seconds: 2));
+      // Check if list is empty FIRST
+      if (filteredTrayList.isEmpty) {
+        print("✅ No more items in list, closing screen");
+        nextItemIdForScanner.value = null;
+        await Future.delayed(const Duration(seconds: 2));
+        return;
+      }
+
+      // List is not empty, find next item to focus AND scroll
+      if (nextItemId != null) {
+        TrayAssignerData? nextItem;
+        int actualNextIndex = -1;
+
+        try {
+          nextItem = filteredTrayList.firstWhere((e) => e.sIId == nextItemId);
+          actualNextIndex = filteredTrayList.indexWhere((e) => e.sIId == nextItemId);
+        } catch (e) {
+          nextItem = null;
         }
 
-        // Close the screen and refresh
-        Get.back();
-        fetchSearchFilterList(selectedFilterType.value);
+        if (nextItem != null && actualNextIndex >= 0) {
+          print("✅ Found next item by ID: ${nextItem.invNo} (${nextItem.sIId}) at index $actualNextIndex");
+          print("🎯 About to call _scrollToItemAndFocus");
+          _logKeyboardState("Before _scrollToItemAndFocus call");
+
+          // Scroll to the item and focus (keyboard stays open)
+          _scrollToItemAndFocus(nextItem, actualNextIndex);
+
+          print("🎯 ========== END _autoSubmitSingleTray ==========");
+          return;
+        }
       }
+
+      print("⚠️ Original next item not found, finding any non-hold item");
+      _handleNoNextItemWithScroll();
+    }
+  }
+
+  void _handleNoNextItemWithScroll() {
+    // Find any available non-hold item
+    TrayAssignerData? firstAvailable;
+    int firstAvailableIndex = -1;
+
+    for (int i = 0; i < filteredTrayList.length; i++) {
+      final item = filteredTrayList[i];
+      final isOnHold = item.hold ?? false;
+      if (!isOnHold) {
+        firstAvailable = item;
+        firstAvailableIndex = i;
+        print("✅ First available item: ${firstAvailable.invNo} at index $i");
+        break;
+      }
+    }
+
+    if (firstAvailable != null && firstAvailableIndex >= 0) {
+      nextItemIdForScanner.value = firstAvailable.sIId;
+      _scrollToItemAndFocus(firstAvailable, firstAvailableIndex);
+    } else {
+      // All items are on hold, but DON'T close the screen
+      print("⚠️ All remaining items are on hold, but keeping screen open");
+      nextItemIdForScanner.value = null;
+
+      Get.snackbar(
+        'Info',
+        'All remaining items are on hold',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.orange,
+        colorText: Colors.white,
+        duration: const Duration(seconds: 2),
+      );
     }
   }
 
@@ -623,12 +856,14 @@ class TrayAssignerController extends GetxController {
       if (focusNode.canRequestFocus) {
         focusNode.requestFocus();
         print("✅ Focus requested for item: $itemId");
+
+        // Scroll to this item if needed (optional - helps user see the focused item)
+        // You can add scrolling logic here if you have a ScrollController
       } else {
         print("❌ Cannot request focus for item: $itemId");
       }
     });
   }
-
 
   void _focusNextItem() {
     // Find the next item in the filtered list
@@ -643,21 +878,12 @@ class TrayAssignerController extends GetxController {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (nextFocusNode.canRequestFocus) {
           nextFocusNode.requestFocus();
-
-          // Optional: Show a brief indicator of which item is now active
-          // Get.snackbar(
-          //   'Next Invoice',
-          //   'Ready to scan tray for ${nextItem.invNo}',
-          //   snackPosition: SnackPosition.TOP,
-          //   backgroundColor: AppTheme.primaryTeal,
-          //   colorText: Colors.white,
-          //   duration: const Duration(seconds: 1),
-          // );
         }
       });
-    }else{
+    } else {
+      // Just close - DON'T refresh
       Get.back();
-      fetchSearchFilterList(selectedFilterType.value);
+      // REMOVED: fetchSearchFilterList(selectedFilterType.value);
     }
   }
 
@@ -707,8 +933,12 @@ class TrayAssignerController extends GetxController {
   }
 
   // Post assign tray API call
+// Update postAssignTray with logs:
   Future<bool> postAssignTray(TrayAssignerData item, String trayList, int trayCount) async {
     try {
+      print("🚀 ========== START postAssignTray ==========");
+      _logKeyboardState("Start of postAssignTray");
+
       isLoading(true);
 
       final apiConfig = await ApiConfig.load();
@@ -716,6 +946,7 @@ class TrayAssignerController extends GetxController {
       final settingPrint = await ApiConfig.getSsub('PrintInvPicker');
       final settingPP = await ApiConfig.getSyn('LListPrint');
 
+      print("📤 Calling API...");
       final response = await http.post(
         Uri.parse('${apiConfig.baseUrl}assign_tray'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -731,7 +962,8 @@ class TrayAssignerController extends GetxController {
         },
       ).timeout(const Duration(seconds: 10));
 
-      print("📩 Assign Tray API Response: ${response.body}");
+      print("📩 API Response received");
+      _logKeyboardState("After API response");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -739,64 +971,130 @@ class TrayAssignerController extends GetxController {
         if (data['status'] == "200") {
           final itemId = item.sIId ?? 0;
 
+          print("🗑️ Removing item from lists...");
+          _logKeyboardState("Before list removal");
+
           filteredTrayList.removeWhere((element) => element.sIId == itemId);
           trayAssignerList.removeWhere((element) => element.sIId == itemId);
+
+          print("🗑️ Item removed from lists");
+          _logKeyboardState("After list removal");
 
           final locationInfo = data['response'] != null &&
               data['response'].isNotEmpty
               ? data['response'][0]['LOCA'] ?? ''
               : '';
 
+          print("📢 Preparing to show SnackBar...");
+          _logKeyboardState("Before SnackBar");
+
           if (locationInfo.isNotEmpty) {
             final locations = locationInfo.split(',');
             locations.sort();
-            Get.snackbar(
-              'Success',
-              'Your next location is ${locations.join(', ')}',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 3),
-            );
+
+            final context = Get.context;
+            if (context != null) {
+              print("📢 Showing location SnackBar");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Your next location is ${locations.join(', ')}',
+                          style: TextStyle(color: Colors.white, fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                  margin: EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+
+              // Check keyboard after snackbar
+              Future.delayed(const Duration(milliseconds: 100), () {
+                _logKeyboardState("100ms after SnackBar shown");
+              });
+            }
           } else {
-            Get.snackbar(
-              'Success',
-              'Tray assigned successfully',
-              snackPosition: SnackPosition.BOTTOM,
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-              duration: const Duration(seconds: 2),
-            );
+            final context = Get.context;
+            if (context != null) {
+              print("📢 Showing success SnackBar");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Tray assigned successfully',
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                  margin: EdgeInsets.all(16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+
+              Future.delayed(const Duration(milliseconds: 100), () {
+                _logKeyboardState("100ms after success SnackBar shown");
+              });
+            }
           }
 
-          // Return true if this was the last item
+          print("🚀 ========== END postAssignTray (SUCCESS) ==========");
           return filteredTrayList.isEmpty;
         } else {
-          Get.snackbar(
-            'Error',
-            data['message'] ?? 'Failed to assign tray',
-            snackPosition: SnackPosition.BOTTOM,
-            backgroundColor: Colors.red,
-            colorText: Colors.white,
-          );
+          print("❌ API returned error status");
+          final context = Get.context;
+          if (context != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(data['message'] ?? 'Failed to assign tray'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
           return false;
         }
       }
     } catch (e) {
       print('🔥 postAssignTray error: $e');
-      Get.snackbar(
-        'Error',
-        'Failed to assign tray: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
-      );
+      _logKeyboardState("After error");
+
+      final context = Get.context;
+      if (context != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to assign tray: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
+      print("🏁 postAssignTray finally block");
+      _logKeyboardState("In finally block");
       isLoading(false);
     }
 
     return false;
   }
+
+
 
   // Enhanced QR Scanner with mobile_scanner
   void openQRScannerForItem(TrayAssignerData item) async {
@@ -1652,6 +1950,7 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
             icon: const Icon(Icons.warning, color: Colors.white),
           );
         } else {
+          // Add tray number - this will trigger auto-submit if single tray mode
           trayController.addTrayNumber(currentItem.value.sIId ?? 0, processedValue);
 
           // Provide haptic feedback for success
@@ -1659,8 +1958,8 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
 
           // Check if single tray mode for continuous scanning
           if (trayController.multiTraySetting.value == 0) {
-            // Wait for API call to complete, then switch to next item
-            await _waitForApiAndSwitchToNext();
+            // Wait for API and list update, then switch to next item in scanner
+            await _waitForControllerToFinish();
           } else {
             // Multi-tray mode - show success message
             Get.snackbar(
@@ -1696,29 +1995,49 @@ class _EnhancedQRScannerPageState extends State<EnhancedQRScannerPage>
     }
   }
 
-  Future<void> _waitForApiAndSwitchToNext() async {
-    // Show processing message
+// NEW METHOD: Just wait for controller and update UI
+// NEW METHOD: Just wait for controller and sync with its decision
+  Future<void> _waitForControllerToFinish() async {
+    print("🔄 Waiting for controller to finish API call...");
 
     // Wait for API to complete
     while (trayController.isLoading.value) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    // After API completes, get the next item
-    if (trayController.filteredTrayList.isNotEmpty) {
-      final nextItem = trayController.filteredTrayList.first;
+    print("✅ Controller finished. Checking for next item...");
 
-      // Update both current item and widget item
-      currentItem.value = nextItem;
-      widget.item = nextItem;
+    // Small delay for UI update
+    await Future.delayed(const Duration(milliseconds: 200));
 
+    // Get the next item ID that controller decided on
+    final nextItemId = trayController.nextItemIdForScanner.value;
 
+    print("📝 Scanner received nextItemId: $nextItemId");
+
+    if (nextItemId != null) {
+      // Find this specific item in the list
+      TrayAssignerData? nextItem;
+      try {
+        nextItem = trayController.filteredTrayList.firstWhere((e) => e.sIId == nextItemId);
+
+        setState(() {
+          currentItem.value = nextItem!;
+          widget.item = nextItem;
+        });
+
+        print("✅ QR Scanner synced to controller's decision: ${nextItem.invNo} (ID: ${nextItem.sIId})");
+      } catch (e) {
+        print("❌ Next item $nextItemId not found in list, closing scanner");
+        Get.back();
+      }
     } else {
-      // No more items, close scanner
-
+      // No next item, close scanner
+      print("✅ No more items, closing scanner");
       Get.back();
     }
   }
+
 
   bool _isValidQRCode(String code) {
     // Basic validation - not empty and reasonable length

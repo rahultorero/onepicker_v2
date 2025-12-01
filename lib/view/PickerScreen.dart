@@ -10,6 +10,7 @@ class PickerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(PickerController());
 
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       extendBodyBehindAppBar: true,
@@ -251,7 +252,9 @@ class PickerScreen extends StatelessWidget {
             // Tab Content with smooth transition
             Expanded(
               child: Container(
-                margin: const EdgeInsets.only(top: 20),
+                margin: EdgeInsets.only(
+                  top: MediaQuery.of(context).size.width > 600 ? 45 : 20,
+                 ),
                 decoration: const BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.only(
